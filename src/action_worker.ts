@@ -13,6 +13,10 @@ import { gg2rdf } from "./gg2rdf.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
 
+export class GhactServiceWorker {
+  constructor(config: )
+}
+
 const queue = new JobsDataBase(`${config.workDir}/jobs`);
 
 let isRunning = false;
@@ -90,7 +94,7 @@ async function gatherJobsForFullUpdate() {
   }
 }
 
-function run() {
+function run(execute: (job: Job) => void) {
   while (queue.pendingJobs().length > 0) {
     const jobStatus = queue.pendingJobs()[0];
     const job = jobStatus.job;
@@ -100,142 +104,7 @@ function run() {
       });
     };
     try {
-      log("Starting transformation\n" + JSON.stringify(job, undefined, 2));
-
-      let modified: string[] = [];
-      let removed: string[] = [];
-      let message = "";
-
-      if (job.files) {
-        modified = job.files.modified || [];
-        removed = job.files.removed || [];
-        message = `GG2RDF ${job.id} (${config.sourceRepository})`;
-        updateLocalData("source", log); // also done by getModifiedAfter
-      } else if (job.from) {
-        const files = getModifiedAfter(job.from, job.till, log);
-        modified = [...files.added, ...files.modified];
-        removed = files.removed;
-        if (files.till && files.till !== "HEAD") {
-          message = `GG2RDF ${config.sourceRepository}@${files.till}`;
-          job.till = files.till;
-          queue.setStatus(job, "pending"); // updates `till`
-        } else {
-          message = `GG2RDF ${job.id} (${config.sourceRepository})`;
-        }
-      } else {
-        throw new Error(
-          "Could not start job, neither explicit file list nor from-commit specified",
-        );
-      }
-
-      log(`\nTotal files: ${modified.length + removed.length}\n`);
-
-      // run saxon on modified files
-      for (const file of modified) {
-        if (
-          file.endsWith(".xml") &&
-          existsSync(`${config.workDir}/repo/source/${file}`)
-        ) {
-          Deno.mkdirSync(
-            config.workDir + "/tmpttl/" + file.slice(0, file.lastIndexOf("/")),
-            {
-              recursive: true,
-            },
-          );
-          try {
-            gg2rdf(
-              `${config.workDir}/repo/source/${file}`,
-              `${config.workDir}/tmpttl/${file.slice(0, -4)}.ttl`,
-              log,
-            );
-            log("gg2rdf successful");
-          } catch (error) {
-            log("gg2rdf failed:");
-            log(error);
-            throw new Error("gg2rdf failed");
-          }
-        } else {
-          log(
-            `Skipping ${file} (not *.xml or does not exist in treatments-xml)`,
-          );
-        }
-      }
-
-      updateLocalData("target", log);
-
-      for (const file of modified) {
-        if (file.endsWith(".xml")) {
-          try {
-            Deno.mkdirSync(
-              `${config.workDir}/repo/target/${
-                file.slice(0, file.lastIndexOf("/"))
-              }`,
-              {
-                recursive: true,
-              },
-            );
-            Deno.renameSync(
-              `${config.workDir}/tmpttl/${file.slice(0, -4)}.ttl`,
-              `${config.workDir}/repo/target/${file.slice(0, -4)}.ttl`,
-            );
-            // TODO check if newer?
-          } catch (e) {
-            log(
-              `Failed to move ${config.workDir}/tmpttl/${
-                file.slice(0, -4)
-              }.ttl to ${config.workDir}/repo/target/${
-                file.slice(0, -4)
-              }.ttl: \n${e}`,
-            );
-          }
-        }
-      }
-
-      for (const file of removed) {
-        if (file.endsWith(".xml")) {
-          const ttlFile = `${config.workDir}/repo/target/${
-            file.slice(0, -4)
-          }.ttl`;
-          try {
-            Deno.removeSync(ttlFile);
-          } catch (e) {
-            log(
-              `Failed to remove file ${ttlFile}. Possbly the xml file was removed before it was transformed. \n${e}`,
-            );
-          }
-        }
-      }
-
-      const gitCommands = `git config --replace-all user.name ${job.author.name}
-      git config --replace-all user.email ${job.author.email}
-      git add -A
-      git commit --quiet -m "${message}"
-      git push --quiet ${
-        config.targetRepositoryUri.replace(
-          "https://",
-          `https://${GHTOKEN}@`,
-        )
-      }`;
-      const p = new Deno.Command("bash", {
-        args: [
-          "-c",
-          gitCommands,
-        ],
-        cwd: `${config.workDir}/repo/target`,
-      });
-      const { success, stdout, stderr } = p.outputSync();
-      if (!success) {
-        log("git push failed: ");
-      } else {
-        log("git push succesful:");
-      }
-      log("STDOUT:");
-      log(new TextDecoder().decode(stdout));
-      log("STDERR:");
-      log(new TextDecoder().decode(stderr));
-      if (!success) {
-        throw new Error("Abort.");
-      }
+      execute(job)
       queue.setStatus(job, "completed");
       log("Completed transformation successfully");
       createBadge("OK");

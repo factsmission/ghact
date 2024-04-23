@@ -1,17 +1,15 @@
-# gg2rdf
+# ghact
 
-Pipeline to transform GoldenGate XML into RDF.
+A framework to act on any (new) file in a Gzthub repository
 
 This Docker Image exposes a server on port `4505` which:
 
-- listens for github webhooks (`POST` requests) from the configured source repo
-  (`plazi/treatments-xml`)
-- processes the changed files to generate rdf
-- pushes these into the configured target repo (`plazi/treatments-rdf`)
+- listens for github webhooks (`POST` requests) from the configured source repo)
+- processes the changed files 
 
 This webserver also exposes the follwing paths:
 
-- `/status`: Serves a Badge (svg) to show the current pipeline status
+- `/status`: Serves a Badge (svg) to show the current service status
 - `/workdir/jobs/`: List of runs
 - `/workdir/jobs/[id]/status.json`: Status of run with that id
 - `/workdir/jobs/[id]/log.txt`: Log of run with that id
@@ -26,7 +24,7 @@ This webserver also exposes the follwing paths:
 Build as a docker container.
 
 ```sh
-docker build . -t gg2rdf
+docker build . -t ghact
 ```
 
 Requires a the environment-variable `GHTOKEN` as
@@ -36,7 +34,7 @@ target-repo.
 Then run using a volume
 
 ```sh
-docker run --name gg2rdf --env GHTOKEN=username:<personal-acces-token> -p 4505:4505 -v gg2rdf:/app/workdir gg2rdf
+docker run --name ghact --env GHTOKEN=username:<personal-acces-token> -p 4505:4505 -v ghact:/app/workdir ghact
 ```
 
 Exposes port `4505`.
@@ -45,14 +43,14 @@ Exposes port `4505`.
 
 ```yml
 services:
-  gg2rdf:
+  ghact:
     ...
     environment:
       - GHTOKEN=username:<personal-acces-token>
     volumes:
-      - gg2rdf:/app/workdir
+      - ghact:/app/workdir
 volumes:
-  gg2rdf:
+  ghact:
 ```
 
 ## Configuration

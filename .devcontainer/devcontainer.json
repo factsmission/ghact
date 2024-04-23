@@ -1,8 +1,8 @@
 {
-	"name": "gg2rdf",
+	"name": "ghact",
 	"dockerComposeFile": "docker-compose.yml",
-	"service": "gg2rdf",
-	"workspaceFolder": "/workspaces/gg2rdf",
+	"service": "ghact",
+	"workspaceFolder": "/workspaces/ghact",
 	"customizations": {
 	  "vscode": {
 		"extensions": [ "denoland.vscode-deno"],

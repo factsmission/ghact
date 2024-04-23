@@ -3,7 +3,7 @@ FROM denoland/deno:ubuntu-1.41.1
 RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y raptor2-utils openjdk-17-jre-headless git
 RUN git config --system http.postBuffer 1048576000
-RUN git config --system --add safe.directory /workspaces/gg2rdf
+RUN git config --system --add safe.directory /workspaces/ghact
 
 # The port that your application listens to.
 EXPOSE 4505

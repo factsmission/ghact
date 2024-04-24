@@ -35,10 +35,7 @@ if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
-// ensure all required directories
 await Deno.mkdir(`${config.workDir}/repo`, { recursive: true });
-await Deno.mkdir(`${config.workDir}/tmprdf`, { recursive: true });
-await Deno.mkdir(`${config.workDir}/tmpttl`, { recursive: true });
 
 const db = new JobsDataBase(`${config.workDir}/jobs`);
 const latest =

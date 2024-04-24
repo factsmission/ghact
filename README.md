@@ -1,6 +1,6 @@
 # ghact
 
-A framework to act on any (new) file in a Gzthub repository
+A framework to act on any (new) file in a Github repository
 
 This Docker Image exposes a server on port `4505` which:
 
@@ -28,8 +28,7 @@ docker build . -t ghact
 ```
 
 Requires a the environment-variable `GHTOKEN` as
-`username:<personal-acces-token>` to authenticate the pushing into the
-target-repo.
+`username:<personal-acces-token>` to access Github.
 
 Then run using a volume
 

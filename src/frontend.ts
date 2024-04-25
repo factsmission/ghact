@@ -6,7 +6,7 @@ import {
   Status,
   STATUS_TEXT,
 } from "./deps.ts";
-import { config } from "../config/config.ts";
+import { GhactConfig } from "./GhactServiceWorker.ts";
 import { createBadge } from "./log.ts";
 //import { getModifiedAfter } from "./repoActions.ts";
 import { Job, JobsDataBase } from "./JobsDataBase.ts";
@@ -35,16 +35,14 @@ if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
-await Deno.mkdir(`${config.workDir}/repo`, { recursive: true });
-
-export default async function frontend(worker: Worker) {
+export default async function frontend(worker: Worker, config: GhactConfig) {
   const db = new JobsDataBase(`${config.workDir}/jobs`);
   const latest =
     db.allJobs().find((j) => j.status === "completed" || j.status === "failed")
       ?.status || "Unknown";
-  if (latest === "failed") createBadge("Failed");
-  else if (latest === "completed") createBadge("OK");
-  else createBadge("Unknown");
+  if (latest === "failed") createBadge("Failed", config.workDir);
+  else if (latest === "completed") createBadge("OK", config.workDir);
+  else createBadge("Unknown", config.workDir);
 
   //////////////////////////////////////////////////
 
@@ -156,7 +154,7 @@ export default async function frontend(worker: Worker) {
     } else {
       //fallback to directory serving
       const response = await serveDir(request, {
-        fsRoot: path.join(path.fromFileUrl(import.meta.resolve("../")), "web"),
+        fsRoot: "../web", //path.join(path.fromFileUrl(import.meta.resolve("../")), "web"),
         showDirListing: true,
       });
       return response;

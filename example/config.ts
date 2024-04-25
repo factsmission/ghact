@@ -1,6 +1,6 @@
 export const config = {
   sourceBranch: "main",
   sourceRepository: "plazi/treatments-xml",
-  sourceRepositoryUri: "https://github.com/plazi/treatments-xml.git",
-  workDir: "/workdir"
+  sourceRepositoryUri: "https://github.com/factsmission/website.git",
+  workDir: "/workdir",
 };

@@ -1,4 +1,3 @@
-import { config } from "../config/config.ts";
 
 const colors = {
   OK: "#26a269",
@@ -6,12 +5,12 @@ const colors = {
   Unknown: "#5e5c64",
 };
 
-export const createBadge = (status: "OK" | "Failed" | "Unknown") => {
+export const createBadge = (status: "OK" | "Failed" | "Unknown", workDir: string) => {
   const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
   <svg
      width="280"
      height="36"
-     version="1.1"
+     version="1.1"s
      xmlns="http://www.w3.org/2000/svg"
      xmlns:svg="http://www.w3.org/2000/svg">
     <path
@@ -33,5 +32,5 @@ export const createBadge = (status: "OK" | "Failed" | "Unknown") => {
        y="28"
      >${status}</text>
   </svg>`;
-  return Deno.writeTextFileSync(`${config.workDir}/status.svg`, svg);
+  return Deno.writeTextFileSync(`${workDir}/status.svg`, svg);
 };

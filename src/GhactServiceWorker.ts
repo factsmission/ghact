@@ -5,10 +5,14 @@
 
 */
 import { path, walk } from "./deps.ts";
-import { config } from "../config/config.ts";
 import { createBadge } from "./log.ts";
 import { type Job, JobsDataBase } from "./JobsDataBase.ts";
-import { updateLocalData } from "./repoActions.ts";
+import GitRepository from "./GitRepository.ts";
+import { config } from "../example/config.ts";
+
+const GHTOKEN = Deno.env.get("GHTOKEN");
+
+if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
 export type GhactConfig = {
   sourceBranch: string;
@@ -20,17 +24,20 @@ export type GhactConfig = {
 export default class GhactServiceWorker {
   queue: JobsDataBase;
   isRunning = false;
+  gitRepository: GitRepository;
   constructor(
     scope: WorkerGlobalScope & typeof globalThis,
-    config: GhactConfig,
+    protected config: GhactConfig,
     protected execute: (job: Job) => void,
   ) {
+    this.gitRepository = new GitRepository(config.sourceRepositoryUri, config.sourceBranch, GHTOKEN, `${config.workDir}/repository`)
     this.queue = new JobsDataBase(`${config.workDir}/jobs`);
     scope.onmessage = (evt) => {
       const job = evt.data as Job | "FULLUPDATE";
       if (job === "FULLUPDATE") {
         this.gatherJobsForFullUpdate();
       } else {
+        //job already added to db by frontend
         if (!this.isRunning) this.startTask();
         else console.log("Already running");
       }
@@ -62,13 +69,13 @@ export default class GhactServiceWorker {
         this.execute(job);
         this.queue.setStatus(job, "completed");
         log("Completed transformation successfully");
-        createBadge("OK");
+        createBadge("OK", this.config.workDir);
       } catch (error) {
         this.queue.setStatus(job, "failed");
         log("FAILED TRANSFORMATION");
         log(error);
         if (error.stack) log(error.stack);
-        createBadge("Failed");
+        createBadge("Failed", this.config.workDir);
       }
     }
   }
@@ -77,13 +84,13 @@ export default class GhactServiceWorker {
     this.isRunning = true;
     try {
       console.log("gathering jobs for full update");
-      updateLocalData("source");
+      this.gitRepository.updateLocalData();
       const date = (new Date()).toISOString();
       let block = 0;
       const jobs: Job[] = [];
       let files: string[] = [];
       for await (
-        const walkEntry of walk(`${config.workDir}/repo/source/`, {
+        const walkEntry of walk(`${this.config.workDir}/repo/source/`, {
           exts: ["xml"],
           includeDirs: false,
           includeSymlinks: false,

@@ -2,7 +2,7 @@
 
 A framework to act on any (new) file in a Github repository
 
-This Docker Image exposes a server on port `4505` which:
+This provides a server on port `4505` which:
 
 - listens for github webhooks (`POST` requests) from the configured source repo)
 - processes the changed files 
@@ -21,46 +21,4 @@ This webserver also exposes the follwing paths:
 
 ## Usage
 
-Build as a docker container.
-
-```sh
-docker build . -t ghact
-```
-
-Requires a the environment-variable `GHTOKEN` as
-`username:<personal-acces-token>` to access Github.
-
-Then run using a volume
-
-```sh
-docker run --name ghact --env GHTOKEN=username:<personal-acces-token> -p 4505:4505 -v ghact:/app/workdir ghact
-```
-
-Exposes port `4505`.
-
-### Docker-Compose
-
-```yml
-services:
-  ghact:
-    ...
-    environment:
-      - GHTOKEN=username:<personal-acces-token>
-    volumes:
-      - ghact:/app/workdir
-volumes:
-  ghact:
-```
-
-## Configuration
-
-Edit the file `config/config.ts`. Should be self-explanatory what goes where.
-
-## Development
-
-The repo comes with vscode devcontaioner configurations. Some tweaks to allow
-using git from inside the devcontainer.
-
-To start from the terminal in vscode:
-
-    set -a; source .env; set +a; deno run -A src/main.ts
+See the [example folder](example/)

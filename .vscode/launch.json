@@ -6,9 +6,9 @@
     "configurations": [
         {
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Example",
             "type": "node",
-            "program": "${workspaceFolder}/src/main.ts",
+            "program": "${workspaceFolder}/example/main.ts",
             "cwd": "${workspaceFolder}",
             "runtimeExecutable": "/usr/bin/deno",
             "runtimeArgs": [

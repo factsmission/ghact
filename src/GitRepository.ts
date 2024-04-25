@@ -11,13 +11,15 @@ export  default class GitRepository {
     protected repoUrl: string,
     protected branch: string,
     protected token: string | undefined,
-    protected workDir: string,
+    public workDir: string,
   ) {
-    Deno.mkdirSync(`${workDir}/.git`, { recursive: true });
+    Deno.mkdirSync(workDir, { recursive: true });
+    console.log(`Created dir ${`${workDir}`}`)
   }
 
   emptyDataDir = () => {
     Deno.removeSync(this.workDir, { recursive: true });
+    Deno.mkdirSync(this.workDir, { recursive: true });
   };
 
   cloneRepo = (log = console.log) => {
@@ -28,7 +30,7 @@ export  default class GitRepository {
         `https://${this.token}@`,
       )
       : this.repoUrl;
-    const p = new Deno.Command("git", {
+    const p = new Deno.Command("/usr/bin/git", {
       args: [
         "clone",
         "--single-branch",
@@ -61,7 +63,7 @@ export  default class GitRepository {
   ) {
     log("starting git pull...");
 
-    const p = new Deno.Command("git", {
+    const p = new Deno.Command("/usr/bin/git", {
       args: ["pull"],
       env: {
         GIT_CEILING_DIRECTORIES: this.workDir,
@@ -90,7 +92,7 @@ export  default class GitRepository {
     log = console.log,
   ): ChangeSummary {
     this.updateLocalData(log);
-    const p = new Deno.Command("git", {
+    const p = new Deno.Command("/usr/bin/git", {
       args: [
         "diff",
         "--name-status",
@@ -109,7 +111,7 @@ export  default class GitRepository {
       throw new Error("Abort.");
     }
     if (tillCommit === "HEAD") {
-      const p = new Deno.Command("git", {
+      const p = new Deno.Command("/usr/bin/git", {
         args: [
           "rev-parse",
           "HEAD",

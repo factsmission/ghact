@@ -1,5 +1,5 @@
 export const config = {
-  sourceBranch: "main",
+  sourceBranch: "master",
   sourceRepository: "plazi/treatments-xml",
   sourceRepositoryUri: "https://github.com/factsmission/website.git",
   workDir: "/workdir",

@@ -8,7 +8,6 @@ import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
 import { type Job, JobsDataBase } from "./JobsDataBase.ts";
 import GitRepository from "./GitRepository.ts";
-import { config } from "../example/config.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
 
@@ -30,6 +29,7 @@ export default class GhactServiceWorker {
     protected config: GhactConfig,
     protected execute: (job: Job) => void,
   ) {
+    console.log("constructing GitRepository")
     this.gitRepository = new GitRepository(config.sourceRepositoryUri, config.sourceBranch, GHTOKEN, `${config.workDir}/repository`)
     this.queue = new JobsDataBase(`${config.workDir}/jobs`);
     scope.onmessage = (evt) => {
@@ -90,15 +90,15 @@ export default class GhactServiceWorker {
       const jobs: Job[] = [];
       let files: string[] = [];
       for await (
-        const walkEntry of walk(`${this.config.workDir}/repo/source/`, {
-          exts: ["xml"],
+        const walkEntry of walk(this.gitRepository.workDir, {
+          exts: undefined,
           includeDirs: false,
           includeSymlinks: false,
         })
       ) {
-        if (walkEntry.isFile && walkEntry.path.endsWith(".xml")) {
+        if (walkEntry.isFile) {
           files.push(
-            walkEntry.path.replace(`${config.workDir}/repo/source/`, ""),
+            walkEntry.path.replace(this.gitRepository.workDir, ""),
           );
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({
@@ -118,6 +118,20 @@ export default class GhactServiceWorker {
         } else {
           console.log("skipped", walkEntry.path);
         }
+      }
+      if (files.length > 0) {
+        jobs.push({
+          author: {
+            name: "GG2RDF Service",
+            email: "gg2rdf@plazi.org",
+          },
+          id: `${date} full update: ${
+            (++block).toString(10).padStart(3, "0")
+          }`, // note that the id must begin with a datestamp for correct ordering
+          files: {
+            modified: files,
+          },
+        });
       }
       jobs.forEach((j) => {
         j.id += ` of ${block.toString(10).padStart(3, "0")}`;

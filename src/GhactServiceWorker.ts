@@ -14,6 +14,9 @@ const GHTOKEN = Deno.env.get("GHTOKEN");
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
 export type GhactConfig = {
+  email: string;
+  title: string;
+  description: string;
   sourceBranch: string;
   sourceRepository: string;
   sourceRepositoryUri: string;
@@ -29,8 +32,13 @@ export default class GhactServiceWorker {
     protected config: GhactConfig,
     protected execute: (job: Job) => void,
   ) {
-    console.log("constructing GitRepository")
-    this.gitRepository = new GitRepository(config.sourceRepositoryUri, config.sourceBranch, GHTOKEN, `${config.workDir}/repository`)
+    console.log("constructing GitRepository");
+    this.gitRepository = new GitRepository(
+      config.sourceRepositoryUri,
+      config.sourceBranch,
+      GHTOKEN,
+      `${config.workDir}/repository`,
+    );
     this.queue = new JobsDataBase(`${config.workDir}/jobs`);
     scope.onmessage = (evt) => {
       const job = evt.data as Job | "FULLUPDATE";
@@ -105,8 +113,8 @@ export default class GhactServiceWorker {
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({
               author: {
-                name: "GG2RDF Service",
-                email: "gg2rdf@plazi.org",
+                name: this.config.title,
+                email: this.config.email,
               },
               id: `${date} full update: ${
                 (++block).toString(10).padStart(3, "0")
@@ -124,12 +132,10 @@ export default class GhactServiceWorker {
       if (files.length > 0) {
         jobs.push({
           author: {
-            name: "GG2RDF Service",
-            email: "gg2rdf@plazi.org",
+            name: this.config.title,
+            email: this.config.email,
           },
-          id: `${date} full update: ${
-            (++block).toString(10).padStart(3, "0")
-          }`, // note that the id must begin with a datestamp for correct ordering
+          id: `${date} full update: ${(++block).toString(10).padStart(3, "0")}`, // note that the id must begin with a datestamp for correct ordering
           files: {
             modified: files,
           },

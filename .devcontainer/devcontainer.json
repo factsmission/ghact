@@ -1,20 +1,19 @@
 {
-	"name": "ghact",
-	"dockerComposeFile": "docker-compose.yml",
-	"service": "ghact",
-	"workspaceFolder": "/workspaces/ghact",
-	"customizations": {
-	  "vscode": {
-		"extensions": [ "denoland.vscode-deno"],
-		"settings": {
-		  "terminal.integrated.defaultProfile.linux": "bash",
-		  "terminal.integrated.profiles.linux": {
-			"bash": {
-			  "path": "/bin/bash"
-			}
-		  }
-		}
-	  }
-	}
+  "name": "ghact",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "ghact",
+  "workspaceFolder": "/workspaces/ghact",
+  "customizations": {
+    "vscode": {
+      "extensions": ["denoland.vscode-deno"],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash"
+          }
+        }
+      }
+    }
   }
-  
+}

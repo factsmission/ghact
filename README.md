@@ -5,7 +5,7 @@ A framework to act on any (new) file in a Github repository
 This provides a server on port `4505` which:
 
 - listens for github webhooks (`POST` requests) from the configured source repo)
-- processes the changed files 
+- processes the changed files
 
 This webserver also exposes the follwing paths:
 

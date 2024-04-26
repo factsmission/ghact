@@ -1,14 +1,9 @@
-import {
-  serveDir,
-  serveFile,
-  Server,
-  Status,
-  STATUS_TEXT,
-} from "./deps.ts";
+import { serveDir, serveFile, Server, Status, STATUS_TEXT } from "./deps.ts";
 import { GhactConfig } from "./GhactServiceWorker.ts";
 import { createBadge } from "./log.ts";
 //import { getModifiedAfter } from "./repoActions.ts";
 import { Job, JobsDataBase } from "./JobsDataBase.ts";
+import { renderToString } from "https://esm.sh/preact-render-to-string@5.1.19?deps=preact@10.5.15";
 
 const encoder = new TextEncoder();
 
@@ -64,8 +59,8 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
           from,
           till,
           author: {
-            name: "GG2RDF Service",
-            email: "gg2rdf@plazi.org",
+            name: config.title,
+            email: config.email,
           },
         };
         db.addJob(job);
@@ -152,13 +147,15 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
       return response;
     } else if (pathname === "/") {
       //fallback to directory serving
-      const response = await fetch(import.meta.resolve("../web/index.html")); /*serveDir(request, {
-        fsRoot: path.join(path.fromFileUrl(import.meta.resolve("../")), "web"),
-        showDirListing: true,
-      });*/
+      const response = new Response(renderToString(indexPage(config.title, config.description)), {
+        headers: { "content-type": "text/html" },
+      }); /*await fetch(
+        import.meta.resolve("../web/index.html"),
+      ); */
+
       return response;
     } else {
-      return new Response(null, {status: 404});
+      return new Response(null, { status: 404 });
     }
   };
 
@@ -218,4 +215,62 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
   console.log(`server listening on http://${Deno.env.get("HOSTNAME")}:4505`);
 
   await server.serve(listener);
+}
+
+function indexPage(title: string, description: string) {
+  const styles = `
+  table {
+    border: 2px solid black;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border-bottom: 1px solid;
+    border-right: 1px dashed;
+    padding: 2px 4px;
+}
+
+.failed {
+    background: #fcc;
+}
+
+.pending {
+    background: #cef;
+}`;
+  const script = `const response = await fetch("jobs.json");
+  const jobs = await response.json();
+  for (const jobStatus of jobs) {
+      const row = document.createElement("tr");
+      jobsTable.appendChild(row);
+      row.classList.add(jobStatus.status);
+      row.innerHTML = \`<td>\${jobStatus.job.id}</td><td>\${jobStatus.status}</td><td><a href="\${jobStatus.dir}/log.txt">\${jobStatus.dir}/log.txt</a></td><td>\${jobStatus.job.from}</td><td>\${jobStatus.job.till}</td>\`;
+  }`;
+  return (
+    <html>
+      <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>{title}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style dangerouslySetInnerHTML={{ __html: styles }}>
+        </style>
+      </head>
+
+      <body>
+        <h1>{title}</h1>
+        <p>{description}</p>
+        <table id="jobsTable">
+          <tr>
+            <th>Job ID</th>
+            <th>Status</th>
+            <th>Log</th>
+            <th>From</th>
+            <th>Till</th>
+          </tr>
+        </table>
+        <script type="module" dangerouslySetInnerHTML={{ __html: script }}>
+        </script>
+      </body>
+    </html>
+  );
 }

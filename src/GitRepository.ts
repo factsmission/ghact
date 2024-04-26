@@ -5,7 +5,7 @@ export type ChangeSummary = {
   till: string;
 };
 
-export  default class GitRepository {
+export default class GitRepository {
   /** @param repoUrl url of the repository */
   constructor(
     protected repoUrl: string,
@@ -14,7 +14,7 @@ export  default class GitRepository {
     public workDir: string,
   ) {
     Deno.mkdirSync(workDir, { recursive: true });
-    console.log(`Created dir ${`${workDir}`}`)
+    console.log(`Created dir ${`${workDir}`}`);
   }
 
   emptyDataDir = () => {

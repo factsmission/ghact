@@ -1,11 +1,13 @@
-
 const colors = {
   OK: "#26a269",
   Failed: "#c01c28",
   Unknown: "#5e5c64",
 };
 
-export const createBadge = (status: "OK" | "Failed" | "Unknown", workDir: string) => {
+export const createBadge = (
+  status: "OK" | "Failed" | "Unknown",
+  workDir: string,
+) => {
   const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
   <svg
      width="280"

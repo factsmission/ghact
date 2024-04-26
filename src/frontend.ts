@@ -151,13 +151,15 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
         showDirListing: true,
       });
       return response;
-    } else {
+    } else if (pathname === "/") {
       //fallback to directory serving
-      const response = await serveDir(request, {
-        fsRoot: "../web", //path.join(path.fromFileUrl(import.meta.resolve("../")), "web"),
+      const response = await fetch(import.meta.resolve("../web/index.html")); /*serveDir(request, {
+        fsRoot: path.join(path.fromFileUrl(import.meta.resolve("../")), "web"),
         showDirListing: true,
-      });
+      });*/
       return response;
+    } else {
+      return new Response(null, {status: 404});
     }
   };
 

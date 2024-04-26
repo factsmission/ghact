@@ -28,7 +28,7 @@ export default class GhactServiceWorker {
   isRunning = false;
   gitRepository: GitRepository;
   constructor(
-    scope: WorkerGlobalScope & typeof globalThis,
+    scope: Window & typeof globalThis,
     protected config: GhactConfig,
     protected execute: (job: Job) => void,
   ) {

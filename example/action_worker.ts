@@ -1,6 +1,3 @@
-console.log("loading worker");
-debugger;
-
 import GhactServiceWorker from "../src/GhactServiceWorker.ts";
 import { Job } from "../src/JobsDataBase.ts";
 import { config } from "./config.ts";

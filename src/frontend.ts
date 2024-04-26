@@ -1,5 +1,4 @@
 import {
-  path,
   serveDir,
   serveFile,
   Server,

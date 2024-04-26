@@ -65,7 +65,9 @@ export default class GhactServiceWorker {
           },
         );
       };
+      this.gitRepository.updateLocalData();
       try {
+        this.queue.setStatus(job, "pending");
         this.execute(job);
         this.queue.setStatus(job, "completed");
         log("Completed transformation successfully");

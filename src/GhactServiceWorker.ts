@@ -30,7 +30,7 @@ export default class GhactServiceWorker {
   constructor(
     scope: Window & typeof globalThis,
     protected config: GhactConfig,
-    protected execute: (job: Job) => void,
+    protected execute: (job: Job, log: (msg: string) => void) => void,
   ) {
     console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
@@ -76,13 +76,13 @@ export default class GhactServiceWorker {
       this.gitRepository.updateLocalData();
       try {
         this.queue.setStatus(job, "pending");
-        this.execute(job);
+        this.execute(job, log);
         this.queue.setStatus(job, "completed");
-        log("Completed transformation successfully");
+        log("Completed job successfully");
         createBadge("OK", this.config.workDir);
       } catch (error) {
         this.queue.setStatus(job, "failed");
-        log("FAILED TRANSFORMATION");
+        log("FAILED JOB");
         log(error);
         if (error.stack) log(error.stack);
         createBadge("Failed", this.config.workDir);

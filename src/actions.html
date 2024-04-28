@@ -1,0 +1,21 @@
+
+    <html>
+      <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Actions</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </style>
+      </head>
+
+      <body>
+        <h1>Actions</h1>
+        <form method="post" id="updateForm">
+          <input type="text" size="50" onchange="updateForm.target='/update?from='">
+          <input type="submit">
+        </form>
+        `/update?from=[from-commit-id]&till=[till-commit-id]`: send a `POST` here to
+  update all files modified since from-commit-id up till-commit-id or HEAD if
+  not specified
+- `/full_update`:
+      </body>
+    </html>

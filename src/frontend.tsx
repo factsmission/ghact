@@ -134,7 +134,9 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
       response.headers.set("Content-Type", "image/svg+xml");
       return response;
     } else if (pathname === "/jobs.json") {
-      const json = JSON.stringify(db.allJobs(), undefined, 2);
+      const from = Number.parseInt(requestUrl.searchParams.get("from") || "0");
+      const till = Number.parseInt(requestUrl.searchParams.get("till") || "200");
+      const json = JSON.stringify(db.allJobs().slice(from, till), undefined, 2);
       const response = new Response(json);
       response.headers.set("Content-Type", "application/json");
       return response;

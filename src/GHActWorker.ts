@@ -1,29 +1,38 @@
 /// <reference lib="webworker" />
 
-/* This webworker performs the actual work, including the long running operations on the repository.
-* The jobs are accepted as messages and stored on disk, when the worker is started uncompleted jobs are picked up and exxecuted.
-
-*/
+import { type Config, type Job } from "../mod.ts";
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
 import GitRepository from "./GitRepository.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
-
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
-import { type Config, type Job } from "../mod.ts";
-
-// TODO: JSDOC
+/**
+ * This webworker performs the actual work, including the long running operations on the repository.
+ * The jobs are accepted as messages and stored on disk, when the worker is started uncompleted jobs are picked up and executed.
+ *
+ * The constructor registers a new EventHandler at scope.onmessage to handle incoming messages by GHActServer running in the main thread.
+ *
+ * example usage:
+ * ```ts
+ * /// <reference lib="webworker" />
+ * import { GHActWorker, type Job } from ".";
+ * const config: Config = { ... };
+ * new GHActWorker(self, config, (job: Job, log) => {
+ *   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);
+ * });
+ * ```
+ */
 export class GHActWorker {
-  queue: JobsDataBase;
-  isRunning = false;
-  gitRepository: GitRepository;
+  private readonly queue: JobsDataBase;
+  private isRunning = false;
+  private readonly gitRepository: GitRepository;
   constructor(
     scope: (Window | WorkerGlobalScope) & typeof globalThis,
-    protected config: Config,
-    protected execute: (job: Job, log: (msg: string) => void) => void,
+    private readonly config: Config,
+    private readonly execute: (job: Job, log: (msg: string) => void) => void,
   ) {
     console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
@@ -45,7 +54,8 @@ export class GHActWorker {
     };
     this.startTask();
   }
-  startTask() {
+
+  private startTask() {
     this.isRunning = true;
     try {
       this.run();
@@ -53,7 +63,8 @@ export class GHActWorker {
       this.isRunning = false;
     }
   }
-  run() {
+
+  private run() {
     while (this.queue.pendingJobs().length > 0) {
       const jobStatus = this.queue.pendingJobs()[0];
       const job = jobStatus.job;
@@ -83,7 +94,7 @@ export class GHActWorker {
     }
   }
 
-  async gatherJobsForFullUpdate() {
+  private async gatherJobsForFullUpdate() {
     this.isRunning = true;
     try {
       console.log("gathering jobs for full update");

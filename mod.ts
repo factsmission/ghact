@@ -1,3 +1,7 @@
+export { GHActServer } from "./src/GHActServer.ts";
+export { GHActWorker } from "./src/GHActWorker.ts";
+export { type ChangeSummary, GitRepository } from "./src/GitRepository.ts";
+
 /**
  * Options for configuring GHAct
  */
@@ -72,6 +76,3 @@ export interface Job {
     removed?: string[];
   };
 }
-
-export { GHActServer } from "./src/GHActServer.ts";
-export { GHActWorker } from "./src/GHActWorker.ts";

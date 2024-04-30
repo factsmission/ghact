@@ -1,10 +1,9 @@
 /// <reference lib="webworker" />
 
-import { type Config, type Job } from "../mod.ts";
+import { type Config, GitRepository, type Job } from "../mod.ts";
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
-import GitRepository from "./GitRepository.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
@@ -29,10 +28,17 @@ export class GHActWorker {
   private readonly queue: JobsDataBase;
   private isRunning = false;
   private readonly gitRepository: GitRepository;
+
+  /**
+   * Note that the before execution of the jobHandler callback function,
+   * GHActWorker will pull the git repository into ${config.workDir}/repository.
+   *
+   * Any other git actions (e.g. commit of changed files) must be handled by the jobHandler.
+   */
   constructor(
     scope: (Window | WorkerGlobalScope) & typeof globalThis,
     private readonly config: Config,
-    private readonly execute: (job: Job, log: (msg: string) => void) => void,
+    private readonly jobHandler: (job: Job, log: (msg: string) => void) => void,
   ) {
     console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
@@ -80,7 +86,7 @@ export class GHActWorker {
       this.gitRepository.updateLocalData();
       try {
         this.queue.setStatus(job, "pending");
-        this.execute(job, log);
+        this.jobHandler(job, log);
         this.queue.setStatus(job, "completed");
         log("Completed job successfully");
         createBadge("OK", this.config.workDir);
@@ -104,7 +110,7 @@ export class GHActWorker {
       const jobs: Job[] = [];
       let files: string[] = [];
       for await (
-        const walkEntry of walk(this.gitRepository.workDir, {
+        const walkEntry of walk(this.gitRepository.directory, {
           exts: undefined,
           includeDirs: false,
           includeSymlinks: false,
@@ -112,7 +118,7 @@ export class GHActWorker {
       ) {
         if (walkEntry.isFile) {
           files.push(
-            walkEntry.path.replace(this.gitRepository.workDir, ""),
+            walkEntry.path.replace(this.gitRepository.directory, ""),
           );
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({

@@ -1,35 +1,69 @@
-export type ChangeSummary = {
+/**
+ * added, removed and modified contiain the respective changed files as a list of paths (strings)
+ */
+export interface ChangeSummary {
   added: string[];
   removed: string[];
   modified: string[];
+  /**
+   * commit hash of commit up until which changes were considered
+   */
   till: string;
-};
+}
 
-export default class GitRepository {
-  /** @param repoUrl url of the repository */
+export class GitRepository {
+  // non-private members are declared this way and not via the constructor to enable documentation.
+  /**
+   * The uri of the repository that will be cloned into ${workDir}/repository
+   *
+   * e.g `"https://github.com/factsmission/ghact.git"`
+   */
+  readonly uri: string;
+  /** Branch to checkout
+   *
+   * e.g `"main"`
+   */
+  readonly branch: string;
+  /**
+   * Where to clone the repository into
+   *
+   * e.g. `"/workdir/repository"`
+   */
+  readonly directory: string;
+
   constructor(
-    protected repoUrl: string,
-    protected branch: string,
-    protected token: string | undefined,
-    public workDir: string,
+    uri: string,
+    branch: string,
+    private readonly token: string | undefined,
+    directory: string,
   ) {
-    Deno.mkdirSync(workDir, { recursive: true });
-    console.log(`Created dir ${`${workDir}`}`);
+    this.uri = uri;
+    this.branch = branch;
+    this.directory = directory;
+    Deno.mkdirSync(this.directory, { recursive: true });
+    console.log(`Created dir ${this.directory}`);
   }
 
-  emptyDataDir = () => {
-    Deno.removeSync(this.workDir, { recursive: true });
-    Deno.mkdirSync(this.workDir, { recursive: true });
-  };
+  /**
+   * Clears the repoDir.
+   * Requires a new run of cloneRepo afterwards.
+   */
+  emptyDataDir() {
+    Deno.removeSync(this.directory, { recursive: true });
+    Deno.mkdirSync(this.directory, { recursive: true });
+  }
 
-  cloneRepo = (log = console.log) => {
-    log(`Cloning ${this.repoUrl}. This will take some time.`);
+  /**
+   * clones the repo into repoDir (git clone)
+   */
+  cloneRepo(log: (msg: string) => void = console.log) {
+    log(`Cloning ${this.uri}. This will take some time.`);
     const authUri = this.token
-      ? this.repoUrl.replace(
+      ? this.uri.replace(
         "https://",
         `https://${this.token}@`,
       )
-      : this.repoUrl;
+      : this.uri;
     const p = new Deno.Command("/usr/bin/git", {
       args: [
         "clone",
@@ -40,7 +74,7 @@ export default class GitRepository {
         authUri,
         `.`,
       ],
-      cwd: this.workDir,
+      cwd: this.directory,
     });
     const { success, stdout, stderr } = p.outputSync();
     if (!success) {
@@ -55,9 +89,13 @@ export default class GitRepository {
     if (!success) {
       throw new Error("Abort.");
     }
-  };
+  }
 
-  // Function to update local data
+  /**
+   * updates the repo (git pull)
+   *
+   * if it fails, it automatically calls `this.emptyDataDir()` and `this.cloneRepo(log)`.
+   */
   updateLocalData(
     log: (msg: string) => void = console.log,
   ) {
@@ -66,9 +104,9 @@ export default class GitRepository {
     const p = new Deno.Command("/usr/bin/git", {
       args: ["pull"],
       env: {
-        GIT_CEILING_DIRECTORIES: this.workDir,
+        GIT_CEILING_DIRECTORIES: this.directory,
       },
-      cwd: this.workDir,
+      cwd: this.directory,
     });
     const { success, stdout, stderr } = p.outputSync();
     if (!success) {
@@ -86,10 +124,19 @@ export default class GitRepository {
     }
   }
 
+  /**
+   * Get a list of all changed files between two commits
+   *
+   * If `tillCommit === "HEAD"`, it will figure out the commit hash of till and return it in the ChangeSummary.
+   *
+   * @param fromCommit Commit hash
+   * @param tillCommit Commit hash, defaults to "HEAD"
+   * @returns ChangeSummary describing the files changed between the two commits.
+   */
   getModifiedAfter(
     fromCommit: string,
     tillCommit = "HEAD",
-    log = console.log,
+    log: (msg: string) => void = console.log,
   ): ChangeSummary {
     this.updateLocalData(log);
     const p = new Deno.Command("/usr/bin/git", {
@@ -100,7 +147,7 @@ export default class GitRepository {
         fromCommit,
         tillCommit,
       ],
-      cwd: this.workDir,
+      cwd: this.directory,
     });
     const { success, stdout, stderr } = p.outputSync();
     log("STDOUT:");
@@ -116,7 +163,7 @@ export default class GitRepository {
           "rev-parse",
           "HEAD",
         ],
-        cwd: this.workDir,
+        cwd: this.directory,
       });
       const { success, stdout } = p.outputSync();
       if (success) {

@@ -27,7 +27,8 @@ const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
  * ```ts
  * import { GHAct, type Config, type Job } from "."
  * const config: Config = { ... };
- * const worker = new Worker( ... ); // worker must be in separate file, use GHActWorker there
+ * // worker must be in separate file, use GHActWorker there
+ * const worker = new Worker(import.meta.resolve("./action_worker.ts"), { type: "module" });
  * const server = new GHActServer(worker, config);
  * await server.serve();
  * ```

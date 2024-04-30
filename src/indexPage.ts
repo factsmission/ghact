@@ -50,6 +50,5 @@ td {
         </table>
         <script type="module">${script}</script>
       </body>
-    </html>`
-  );
+    </html>`);
 }

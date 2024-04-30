@@ -134,7 +134,9 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
       return response;
     } else if (pathname === "/jobs.json") {
       const from = Number.parseInt(requestUrl.searchParams.get("from") || "0");
-      const till = Number.parseInt(requestUrl.searchParams.get("till") || "200");
+      const till = Number.parseInt(
+        requestUrl.searchParams.get("till") || "200",
+      );
       const json = JSON.stringify(db.allJobs().slice(from, till), undefined, 2);
       const response = new Response(json);
       response.headers.set("Content-Type", "application/json");
@@ -147,12 +149,15 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
       });
       return response;
     } else if (pathname === "/actions") {
-      return await fetch(import.meta.resolve("./actions.html"))
+      return await fetch(import.meta.resolve("./actions.html"));
     } else if (pathname === "/") {
       //fallback to directory serving
-      const response = new Response(indexPage(config.title, config.description), {
-        headers: { "content-type": "text/html" },
-      }); /*await fetch(
+      const response = new Response(
+        indexPage(config.title, config.description),
+        {
+          headers: { "content-type": "text/html" },
+        },
+      ); /*await fetch(
         import.meta.resolve("../web/index.html"),
       ); */
 

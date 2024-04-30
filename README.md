@@ -2,12 +2,13 @@
 
 A framework to act on any (new) file in a Github repository
 
-This provides a server on port `4505` which:
+This provides a `GHActServer` class which:
 
-- listens for github webhooks (`POST` requests) from the configured source repo)
-- processes the changed files
+- listens for github webhooks (`POST` requests) from the configured source repo
+- processes the changed files in a webworker set-up using the `GHActWorker`
+  class
 
-This webserver also exposes the follwing paths:
+The server also exposes the follwing paths:
 
 - `/status`: Serves a Badge (svg) to show the current service status
 - `/workdir/jobs/`: List of runs
@@ -19,6 +20,32 @@ This webserver also exposes the follwing paths:
 - `/full_update`: send a `POST` here to run the full_update script. Note that
   this will not delete any files (yet).
 
-## Usage
+## Usage / Documentation
 
-See the [example folder](example/)
+Documentation is available on [deno.land](https://deno.land/x/ghact?doc).
+
+### Example Usage
+
+main.ts:
+
+```ts
+import { GHAct, type Config } from "."
+const config: Config = { ... };
+// worker must be in separate file, use GHActWorker there
+const worker = new Worker(import.meta.resolve("./worker.ts"), { type: "module" });
+const server = new GHActServer(worker, config);
+await server.serve(); // defaults to port 4505
+```
+
+worker.ts:
+
+```ts
+/// <reference lib="webworker" />
+import { GHActWorker, type Job, type Config } from ".";
+const config: Config = { ... };
+new GHActWorker(self, config, (job: Job, log) => {
+  log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);
+});
+```
+
+See also the [example folder](example/).

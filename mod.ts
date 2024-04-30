@@ -69,7 +69,7 @@ export interface Job {
     email: string;
   };
   /**
-   * Only used for transform_all
+   * Only used for full_update
    */
   files?: {
     modified?: string[];

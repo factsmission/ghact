@@ -1,5 +1,5 @@
 import { serveDir, serveFile, Server, Status, STATUS_TEXT } from "./deps.ts";
-import { GhactConfig } from "./GhactServiceWorker.ts";
+import { Config } from "../mod.ts";
 import { createBadge } from "./log.ts";
 import { Job, JobsDataBase } from "./JobsDataBase.ts";
 import { indexPage } from "./indexPage.ts";
@@ -28,7 +28,7 @@ if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
-export default async function frontend(worker: Worker, config: GhactConfig) {
+export default async function frontend(worker: Worker, config: Config) {
   const db = new JobsDataBase(`${config.workDir}/jobs`);
   const latest =
     db.allJobs().find((j) => j.status === "completed" || j.status === "failed")

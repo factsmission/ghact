@@ -13,15 +13,7 @@ const GHTOKEN = Deno.env.get("GHTOKEN");
 
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
-export type GhactConfig = {
-  email: string;
-  title: string;
-  description: string;
-  sourceBranch: string;
-  sourceRepository: string;
-  sourceRepositoryUri: string;
-  workDir: string;
-};
+import { type Config } from "../mod.ts"
 
 export default class GhactServiceWorker {
   queue: JobsDataBase;
@@ -29,7 +21,7 @@ export default class GhactServiceWorker {
   gitRepository: GitRepository;
   constructor(
     scope: Window & typeof globalThis,
-    protected config: GhactConfig,
+    protected config: Config,
     protected execute: (job: Job, log: (msg: string) => void) => void,
   ) {
     console.log("constructing GitRepository");

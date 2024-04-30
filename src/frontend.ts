@@ -2,8 +2,7 @@ import { serveDir, serveFile, Server, Status, STATUS_TEXT } from "./deps.ts";
 import { GhactConfig } from "./GhactServiceWorker.ts";
 import { createBadge } from "./log.ts";
 import { Job, JobsDataBase } from "./JobsDataBase.ts";
-import { renderToString } from "https://esm.sh/preact-render-to-string@5.1.19?deps=preact@10.5.15";
-import { indexPage } from "./indexPage.tsx";
+import { indexPage } from "./indexPage.ts";
 
 const encoder = new TextEncoder();
 
@@ -151,7 +150,7 @@ export default async function frontend(worker: Worker, config: GhactConfig) {
       return await fetch(import.meta.resolve("./actions.html"))
     } else if (pathname === "/") {
       //fallback to directory serving
-      const response = new Response(renderToString(indexPage(config.title, config.description)), {
+      const response = new Response(indexPage(config.title, config.description), {
         headers: { "content-type": "text/html" },
       }); /*await fetch(
         import.meta.resolve("../web/index.html"),

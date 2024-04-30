@@ -27,19 +27,18 @@ td {
       row.classList.add(jobStatus.status);
       row.innerHTML = \`<td>\${jobStatus.job.id}</td><td>\${jobStatus.status}</td><td><a href="\${jobStatus.dir}/log.txt">\${jobStatus.dir}/log.txt</a></td><td>\${jobStatus.job.from}</td><td>\${jobStatus.job.till}</td>\`;
   }`;
-  return (
+  return (`
     <html>
       <head>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <title>{title}</title>
+        <title>${title}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style dangerouslySetInnerHTML={{ __html: styles }}>
-        </style>
+        <style>${styles}</style>
       </head>
 
       <body>
-        <h1>{title}</h1>
-        <p>{description}</p>
+        <h1>${title}</h1>
+        <p>${description}</p>
         <table id="jobsTable">
           <tr>
             <th>Job ID</th>
@@ -49,9 +48,8 @@ td {
             <th>Till</th>
           </tr>
         </table>
-        <script type="module" dangerouslySetInnerHTML={{ __html: script }}>
-        </script>
+        <script type="module">${script}</script>
       </body>
-    </html>
+    </html>`
   );
 }

@@ -1,4 +1,6 @@
-export const config = {
+import { type Config } from "../mod.ts"
+
+export const config: Config = {
   title: "GhAct Example Service",
   description:
     "GhAct is a framework to execue a script on current and future files in a Github repository.",

@@ -1,10 +1,9 @@
 import { serveDir, serveFile, Server, Status, STATUS_TEXT } from "./deps.ts";
-import { Config } from "../mod.ts";
+import { type Config, type Job } from "../mod.ts";
 import { createBadge } from "./log.ts";
-import { Job, JobsDataBase } from "./JobsDataBase.ts";
+import { JobsDataBase } from "./JobsDataBase.ts";
 import { indexPage } from "./indexPage.ts";
-
-const encoder = new TextEncoder();
+import { verifySignature } from "./helpers.ts";
 
 // Incomplete, only what we need
 type webhookPayload = {
@@ -19,27 +18,52 @@ type webhookPayload = {
   };
 };
 
-//////////////////////////////////////////////////
-// initialize
-
 const GHTOKEN = Deno.env.get("GHTOKEN");
-
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
-
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
-export default async function frontend(worker: Worker, config: Config) {
-  const db = new JobsDataBase(`${config.workDir}/jobs`);
-  const latest =
-    db.allJobs().find((j) => j.status === "completed" || j.status === "failed")
-      ?.status || "Unknown";
-  if (latest === "failed") createBadge("Failed", config.workDir);
-  else if (latest === "completed") createBadge("OK", config.workDir);
-  else createBadge("Unknown", config.workDir);
+/**
+ * example usage:
+ * ```ts
+ * import { GHAct, type Config, type Job } from "."
+ * const config: Config = { ... };
+ * const worker = new Worker( ... ); // worker must be in separate file, use GHActWorker there
+ * const server = new GHActServer(worker, config);
+ * await server.serve();
+ * ```
+ */
+export class GHActServer {
+  private readonly server: Server;
+  private readonly db: JobsDataBase;
 
-  //////////////////////////////////////////////////
+  constructor(
+    private readonly worker: Worker,
+    private readonly config: Config,
+  ) {
+    this.db = new JobsDataBase(`${this.config.workDir}/jobs`);
+    const latest =
+      this.db.allJobs().find((j) =>
+        j.status === "completed" || j.status === "failed"
+      )
+        ?.status || "Unknown";
+    if (latest === "failed") createBadge("Failed", this.config.workDir);
+    else if (latest === "completed") createBadge("OK", this.config.workDir);
+    else createBadge("Unknown", this.config.workDir);
 
-  const webhookHandler = async (request: Request) => {
+    this.server = new Server({ handler: () => new Response() });
+  }
+
+  /**
+   * e.g. `await server.serve();`
+   * @param listener Defaults to Deno.listen({ port: 4505, hostname: "0.0.0.0" })
+   */
+  serve(
+    listener = Deno.listen({ port: 4505, hostname: "0.0.0.0" }),
+  ): Promise<void> {
+    return this.server.serve(listener);
+  }
+
+  private webhookHandler = async (request: Request) => {
     const requestUrl = new URL(request.url);
     const pathname = requestUrl.pathname;
     if (request.method === "POST") {
@@ -58,12 +82,12 @@ export default async function frontend(worker: Worker, config: Config) {
           from,
           till,
           author: {
-            name: config.title,
-            email: config.email,
+            name: this.config.title,
+            email: this.config.email,
           },
         };
-        db.addJob(job);
-        worker.postMessage(job);
+        this.db.addJob(job);
+        this.worker.postMessage(job);
         console.log(
           `Job submitted: ${JSON.stringify(job, undefined, 2)}`,
         );
@@ -74,13 +98,15 @@ export default async function frontend(worker: Worker, config: Config) {
       }
       if (pathname === "/full_update") {
         console.log("· got full_update request");
-        worker.postMessage("FULLUPDATE");
+        this.worker.postMessage("FULLUPDATE");
         return new Response(undefined, {
           status: Status.Accepted,
           statusText: STATUS_TEXT[Status.Accepted],
         });
       } else {
-        if (WEBHOOK_SECRET && !(await verifySignature(request))) {
+        if (
+          WEBHOOK_SECRET && !(await verifySignature(request, WEBHOOK_SECRET))
+        ) {
           return new Response("Unauthorized", {
             status: Status.Unauthorized,
             statusText: STATUS_TEXT[Status.Unauthorized],
@@ -99,7 +125,7 @@ export default async function frontend(worker: Worker, config: Config) {
             });
           }
 
-          if (repoName !== config.sourceRepository) {
+          if (repoName !== this.config.sourceRepository) {
             return new Response("Wrong Repository", {
               status: Status.BadRequest,
               statusText: STATUS_TEXT[Status.BadRequest],
@@ -111,8 +137,8 @@ export default async function frontend(worker: Worker, config: Config) {
             till: json.after,
             author: json.pusher,
           };
-          db.addJob(job);
-          worker.postMessage(job);
+          this.db.addJob(job);
+          this.worker.postMessage(job);
           console.log(
             `Job submitted: ${JSON.stringify(job, undefined, 2)}`,
           );
@@ -129,7 +155,10 @@ export default async function frontend(worker: Worker, config: Config) {
       }
     } else if (pathname === "/status" || pathname === "/status/") {
       console.log("· Got status badge request");
-      const response = await serveFile(request, `${config.workDir}/status.svg`);
+      const response = await serveFile(
+        request,
+        `${this.config.workDir}/status.svg`,
+      );
       response.headers.set("Content-Type", "image/svg+xml");
       return response;
     } else if (pathname === "/jobs.json") {
@@ -137,11 +166,15 @@ export default async function frontend(worker: Worker, config: Config) {
       const till = Number.parseInt(
         requestUrl.searchParams.get("till") || "200",
       );
-      const json = JSON.stringify(db.allJobs().slice(from, till), undefined, 2);
+      const json = JSON.stringify(
+        this.db.allJobs().slice(from, till),
+        undefined,
+        2,
+      );
       const response = new Response(json);
       response.headers.set("Content-Type", "application/json");
       return response;
-    } else if (pathname.startsWith(config.workDir)) {
+    } else if (pathname.startsWith(this.config.workDir)) {
       //serving workdir
       const response = await serveDir(request, {
         fsRoot: "/",
@@ -153,7 +186,7 @@ export default async function frontend(worker: Worker, config: Config) {
     } else if (pathname === "/") {
       //fallback to directory serving
       const response = new Response(
-        indexPage(config.title, config.description),
+        indexPage(this.config.title, this.config.description),
         {
           headers: { "content-type": "text/html" },
         },
@@ -166,61 +199,4 @@ export default async function frontend(worker: Worker, config: Config) {
       return new Response(null, { status: 404 });
     }
   };
-
-  const verifySignature = async (req: Request) => {
-    const header = req.headers.get("x-hub-signature-256");
-    if (!header) {
-      throw new Error("No x-hub-signature-256");
-    }
-    const payload = JSON.stringify(req.body);
-    const parts = header.split("=");
-    const sigHex = parts[1];
-
-    const algorithm = { name: "HMAC", hash: { name: "SHA-256" } };
-
-    const keyBytes = encoder.encode(WEBHOOK_SECRET);
-    const extractable = false;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      algorithm,
-      extractable,
-      ["sign", "verify"],
-    );
-
-    const sigBytes = hexToBytes(sigHex);
-    const dataBytes = encoder.encode(payload);
-    const equal = await crypto.subtle.verify(
-      algorithm.name,
-      key,
-      sigBytes,
-      dataBytes,
-    );
-
-    return equal;
-  };
-
-  function hexToBytes(hex: string) {
-    const len = hex.length / 2;
-    const bytes = new Uint8Array(len);
-
-    let index = 0;
-    for (let i = 0; i < hex.length; i += 2) {
-      const c = hex.slice(i, i + 2);
-      const b = parseInt(c, 16);
-      bytes[index] = b;
-      index += 1;
-    }
-
-    return bytes;
-  }
-
-  //////////////////////////////////////////////////
-  // start server
-
-  const server = new Server({ handler: webhookHandler });
-  const listener = Deno.listen({ port: 4505, hostname: "0.0.0.0" });
-  console.log(`server listening on http://${Deno.env.get("HOSTNAME")}:4505`);
-
-  await server.serve(listener);
 }

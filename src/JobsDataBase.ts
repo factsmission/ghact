@@ -3,20 +3,7 @@ import { path } from "./deps.ts";
 
 //const jobsDir = `${config.workDir}/log`;
 
-export type Job = {
-  id: string;
-  from?: string;
-  till?: string;
-  author: {
-    "name": string;
-    "email": string;
-  };
-  files?: {
-    // only used for transform_all
-    modified?: string[];
-    removed?: string[];
-  };
-};
+import { type Job } from "../mod.ts";
 
 export type JobStatus = {
   job: Job;

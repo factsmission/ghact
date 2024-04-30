@@ -1,10 +1,8 @@
-import frontend from "../src/frontend.tsx";
+import { GHActServer } from "../mod.ts";
 import { config } from "./config.ts";
-console.log(new URL("./action_worker.ts", import.meta.url).href);
-const worker = new Worker(
-  new URL("./action_worker.ts", import.meta.url).href,
-  {
-    type: "module",
-  },
-);
-await frontend(worker, config);
+
+const worker = new Worker(import.meta.resolve("./action_worker.ts"), {
+  type: "module",
+});
+const server = new GHActServer(worker, config);
+await server.serve();

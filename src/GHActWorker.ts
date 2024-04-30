@@ -6,21 +6,22 @@
 */
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
-import { type Job, JobsDataBase } from "./JobsDataBase.ts";
+import { JobsDataBase } from "./JobsDataBase.ts";
 import GitRepository from "./GitRepository.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
 
 if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 
-import { type Config } from "../mod.ts"
+import { type Config, type Job } from "../mod.ts";
 
-export default class GhactServiceWorker {
+// TODO: JSDOC
+export class GHActWorker {
   queue: JobsDataBase;
   isRunning = false;
   gitRepository: GitRepository;
   constructor(
-    scope: Window & typeof globalThis,
+    scope: (Window | WorkerGlobalScope) & typeof globalThis,
     protected config: Config,
     protected execute: (job: Job, log: (msg: string) => void) => void,
   ) {

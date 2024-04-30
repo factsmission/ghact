@@ -42,3 +42,36 @@ export interface Config {
    */
   workDir: string;
 }
+
+/** Describes a Job */
+export interface Job {
+  /**
+   * ID always starts with a date-stamp
+   */
+  id: string;
+  /**
+   * Indicates the commit since which changes are considered
+   */
+  from?: string;
+  /**
+   * Indicates the commit until which changes are considered
+   */
+  till?: string;
+  /**
+   * Used for commit author
+   */
+  author: {
+    name: string;
+    email: string;
+  };
+  /**
+   * Only used for transform_all
+   */
+  files?: {
+    modified?: string[];
+    removed?: string[];
+  };
+}
+
+export { GHActServer } from "./src/GHActServer.ts";
+export { GHActWorker } from "./src/GHActWorker.ts";

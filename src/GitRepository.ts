@@ -16,6 +16,8 @@ export class GitRepository {
   /**
    * The uri of the repository that will be cloned into ${workDir}/repository
    *
+   * Note that authentification via token is only possible for https-uris.
+   *
    * e.g `"https://github.com/factsmission/ghact.git"`
    */
   readonly uri: string;

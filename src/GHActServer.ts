@@ -18,11 +18,11 @@ type webhookPayload = {
   };
 };
 
-const GHTOKEN = Deno.env.get("GHTOKEN");
-if (!GHTOKEN) throw new Error("Requires GHTOKEN");
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
 /**
+ * uses the WEBHOOK_SECRET environment variable to verify the origin of webhooks.
+ * 
  * example usage:
  * ```ts
  * import { GHAct, type Config, type Job } from "."
@@ -50,6 +50,14 @@ export class GHActServer {
     if (latest === "failed") createBadge("Failed", this.config.workDir);
     else if (latest === "completed") createBadge("OK", this.config.workDir);
     else createBadge("Unknown", this.config.workDir);
+
+    if (
+      !this.config.sourceRepositoryUri.includes(this.config.sourceRepository)
+    ) {
+      console.warn(
+        `Warning: config.sourceRepositoryUri (${this.config.sourceRepositoryUri}) might not point to the same repository as config.sourceRepository (${this.config.sourceRepository})`,
+      );
+    }
 
     this.server = new Server({ handler: () => new Response() });
   }

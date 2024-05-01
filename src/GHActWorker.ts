@@ -13,7 +13,7 @@ if (!GHTOKEN) console.warn("GHTOKEN is missing!");
  * The jobs are accepted as messages and stored on disk, when the worker is started uncompleted jobs are picked up and executed.
  *
  * The constructor registers a new EventHandler at scope.onmessage to handle incoming messages by GHActServer running in the main thread.
- * 
+ *
  * uses the GHTOKEN environment variable to authenticate the GitRepository if given.
  *
  * example usage:

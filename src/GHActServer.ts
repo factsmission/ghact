@@ -22,7 +22,7 @@ const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 
 /**
  * uses the WEBHOOK_SECRET environment variable to verify the origin of webhooks.
- * 
+ *
  * example usage:
  * ```ts
  * import { GHAct, type Config, type Job } from "."

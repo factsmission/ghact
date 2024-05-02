@@ -1,3 +1,5 @@
+import { type Job } from "../mod.ts";
+
 /**
  * added, removed and modified contiain the respective changed files as a list of paths (strings)
  */
@@ -33,6 +35,8 @@ export class GitRepository {
    */
   readonly directory: string;
 
+  private readonly authUri: string;
+
   constructor(
     uri: string,
     branch: string,
@@ -42,6 +46,9 @@ export class GitRepository {
     this.uri = uri;
     this.branch = branch;
     this.directory = directory;
+    this.authUri = this.token
+      ? this.uri.replace("https://", `https://${this.token}@`)
+      : this.uri;
     Deno.mkdirSync(this.directory, { recursive: true });
     console.log(`Created dir ${this.directory}`);
   }
@@ -60,12 +67,6 @@ export class GitRepository {
    */
   cloneRepo(log: (msg: string) => void = console.log) {
     log(`Cloning ${this.uri}. This will take some time.`);
-    const authUri = this.token
-      ? this.uri.replace(
-        "https://",
-        `https://${this.token}@`,
-      )
-      : this.uri;
     const p = new Deno.Command("/usr/bin/git", {
       args: [
         "clone",
@@ -73,7 +74,7 @@ export class GitRepository {
         "--quiet",
         `--branch`,
         `${this.branch}`,
-        authUri,
+        this.authUri,
         `.`,
       ],
       cwd: this.directory,
@@ -194,5 +195,59 @@ export class GitRepository {
       removed: typedFiles.filter((t) => t[0] === "D").map((t) => t[1]),
       till: tillCommit,
     });
+  }
+
+  /**
+   * Wrapper for `git push`
+   */
+  push(log: (msg: string) => void = console.log) {
+    const p = new Deno.Command("/usr/bin/git", {
+      args: [
+        "push",
+        "--quiet",
+        this.authUri,
+      ],
+      cwd: this.directory,
+    });
+    const { success, stdout, stderr } = p.outputSync();
+    log("git push STDOUT:");
+    log(new TextDecoder().decode(stdout));
+    log("git push STDERR:");
+    log(new TextDecoder().decode(stderr));
+    if (!success) {
+      throw new Error("git push failed, see logs.");
+    }
+  }
+
+  /**
+   * Updates git config to make job-author commit-author, adds all files and makes a commit.
+   *
+   * ```sh
+   * git config --replace-all user.name ${job.author.name}
+   * git config --replace-all user.email ${job.author.email}
+   * git add -A
+   * git commit --quiet -m "${message}"
+   * ```
+   */
+  commit(job: Job, message: string, log: (msg: string) => void = console.log) {
+    const commands = `git config --replace-all user.name ${job.author.name}
+                      git config --replace-all user.email ${job.author.email}
+                      git add -A
+                      git commit --quiet -m ${JSON.stringify(message)}`;
+    const p = new Deno.Command("bash", {
+      args: [
+        "-c",
+        commands,
+      ],
+      cwd: this.directory,
+    });
+    const { success, stdout, stderr } = p.outputSync();
+    log("git commit STDOUT:");
+    log(new TextDecoder().decode(stdout));
+    log("git commit STDERR:");
+    log(new TextDecoder().decode(stderr));
+    if (!success) {
+      throw new Error("git commit failed, see logs.");
+    }
   }
 }

@@ -21,7 +21,6 @@ RUN deno cache src/deps.ts
 
 # These steps will be re-run upon each file change in your working directory:
 ADD src src
-ADD web web
 ADD example example
 
 CMD ["run", "--allow-net", "--allow-read", "--allow-write", "--allow-run", "--allow-env", "example/main.ts"]

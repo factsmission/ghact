@@ -27,8 +27,11 @@ if (!GHTOKEN) console.warn("GHTOKEN is missing!");
  * ```
  */
 export class GHActWorker {
+  /** @internal */
   private readonly queue: JobsDataBase;
+  /** @internal */
   private isRunning = false;
+  /** @internal */
   private readonly gitRepository: GitRepository;
 
   /**
@@ -63,6 +66,7 @@ export class GHActWorker {
     this.startTask();
   }
 
+  /** @ignore */
   private startTask() {
     this.isRunning = true;
     try {
@@ -72,6 +76,7 @@ export class GHActWorker {
     }
   }
 
+  /** @ignore */
   private run() {
     while (this.queue.pendingJobs().length > 0) {
       const jobStatus = this.queue.pendingJobs()[0];
@@ -102,6 +107,7 @@ export class GHActWorker {
     }
   }
 
+  /** @ignore */
   private async gatherJobsForFullUpdate() {
     this.isRunning = true;
     try {

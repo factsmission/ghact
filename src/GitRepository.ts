@@ -4,15 +4,21 @@ import { type Job } from "../mod.ts";
  * added, removed and modified contiain the respective changed files as a list of paths (strings)
  */
 export interface ChangeSummary {
+  /** files added in the requested span of commits */
   added: string[];
+  /** files removed in the requested span of commits */
   removed: string[];
+  /** files modified in the requested span of commits */
   modified: string[];
-  /**
-   * commit hash of commit up until which changes were considered
-   */
+  /** commit hash of commit up until which changes were considered */
   till: string;
 }
 
+/**
+ * Represents a git repository on disk, with convenience functions to manage it.
+ *
+ * Used internally to manage the source-repository.
+ */
 export class GitRepository {
   // non-private members are declared this way and not via the constructor to enable documentation.
   /**
@@ -35,8 +41,15 @@ export class GitRepository {
    */
   readonly directory: string;
 
+  /** @internal */
   private readonly authUri: string;
 
+  /**
+   * Only creates the repository instance in TS and ensures that the directory exists.
+   * Doesn't clone or otherwise initalize the repository on disk.
+   *
+   * Use `.updateLocalData()` to actually pull or clone the repository onto the disk.
+   */
   constructor(
     uri: string,
     branch: string,
@@ -54,7 +67,7 @@ export class GitRepository {
   }
 
   /**
-   * Clears the repoDir.
+   * Clears the directory.
    * Requires a new run of cloneRepo afterwards.
    */
   emptyDataDir() {
@@ -63,7 +76,10 @@ export class GitRepository {
   }
 
   /**
-   * clones the repo into repoDir (git clone)
+   * Clones the repo into the directory (git clone).
+   *
+   * Please ensure that the directory is empty beforehand
+   * or use `.updateLocalData()` if the repository may already be cloned, `.updateLocalData()` will only clone if neccesary.
    */
   cloneRepo(log: (msg: string) => void = console.log) {
     log(`Cloning ${this.uri}. This will take some time.`);
@@ -90,7 +106,9 @@ export class GitRepository {
     log("STDERR:");
     log(new TextDecoder().decode(stderr));
     if (!success) {
-      throw new Error("Abort.");
+      throw new Error(
+        `Cloning of ${this.uri} into ${this.directory} failed, see logs.`,
+      );
     }
   }
 

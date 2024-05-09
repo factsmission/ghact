@@ -29,7 +29,7 @@ Documentation is available on [deno.land](https://deno.land/x/ghact?doc).
 main.ts:
 
 ```ts
-import { GHAct, type Config } from "."
+import { GHActServer, type Config } from "ghact/mod.ts";
 const config: Config = { ... };
 // worker must be in separate file, use GHActWorker there
 const worker = new Worker(import.meta.resolve("./worker.ts"), { type: "module" });
@@ -41,7 +41,7 @@ worker.ts:
 
 ```ts
 /// <reference lib="webworker" />
-import { GHActWorker, type Job, type Config } from ".";
+import { GHActWorker, type Config, type Job } from "ghact/mod.ts";
 const config: Config = { ... };
 new GHActWorker(self, config, (job: Job, log) => {
   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);

@@ -19,7 +19,7 @@ if (!GHTOKEN) console.warn("GHTOKEN is missing!");
  * example usage:
  * ```ts
  * /// <reference lib="webworker" />
- * import { GHActWorker, type Job } from ".";
+ * import { GHActWorker, type Config, type Job } from ".";
  * const config: Config = { ... };
  * new GHActWorker(self, config, (job: Job, log) => {
  *   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);

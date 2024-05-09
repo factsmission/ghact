@@ -34,9 +34,17 @@ const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
  * ```
  */
 export class GHActServer {
+  /** @internal */
   private readonly server: Server;
+  /** @internal */
   private readonly db: JobsDataBase;
 
+  /**
+   * Creates new GHActServer. Use the `.serve()` method to start listening.
+   * 
+   * @param worker Worker (e.g. `new Worker(import.meta.resolve("./action_worker.ts"), { type: "module" })`). Worker should be using GHActWorker to handle events properly.
+   * @param config Configuration for GHAct
+   */
   constructor(
     private readonly worker: Worker,
     private readonly config: Config,
@@ -59,10 +67,12 @@ export class GHActServer {
       );
     }
 
-    this.server = new Server({ handler: () => new Response() });
+    this.server = new Server({ handler: this.webhookHandler });
   }
 
   /**
+   * Start listenig for requests (webhooks and for the logs interface)
+   * 
    * e.g. `await server.serve();`
    * @param listener Defaults to Deno.listen({ port: 4505, hostname: "0.0.0.0" })
    */
@@ -72,7 +82,8 @@ export class GHActServer {
     return this.server.serve(listener);
   }
 
-  private webhookHandler = async (request: Request) => {
+  /** @internal */
+  private async webhookHandler(request: Request) {
     const requestUrl = new URL(request.url);
     const pathname = requestUrl.pathname;
     if (request.method === "POST") {
@@ -207,5 +218,5 @@ export class GHActServer {
     } else {
       return new Response(null, { status: 404 });
     }
-  };
+  }
 }

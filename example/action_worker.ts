@@ -1,8 +1,9 @@
-import GhactServiceWorker from "../src/GhactServiceWorker.ts";
-import { Job } from "../src/JobsDataBase.ts";
+/// <reference lib="webworker" />
+
+import { GHActWorker, type Job } from "../mod.ts";
 import { config } from "./config.ts";
 
-const _worker = new GhactServiceWorker(self, config, (job: Job, log) => {
+const _worker = new GHActWorker(self, config, (job: Job, log) => {
   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);
 });
 console.log("loaded worker");

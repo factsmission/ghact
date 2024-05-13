@@ -1,36 +1,49 @@
 /// <reference lib="webworker" />
 
-/* This webworker performs the actual work, including the long running operations on the repository.
-* The jobs are accepted as messages and stored on disk, when the worker is started uncompleted jobs are picked up and exxecuted.
-
-*/
+import { type Config, GitRepository, type Job } from "../mod.ts";
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
-import { type Job, JobsDataBase } from "./JobsDataBase.ts";
-import GitRepository from "./GitRepository.ts";
+import { JobsDataBase } from "./JobsDataBase.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
+if (!GHTOKEN) console.warn("GHTOKEN is missing!");
 
-if (!GHTOKEN) throw new Error("Requires GHTOKEN");
+/**
+ * This webworker performs the actual work, including the long running operations on the repository.
+ * The jobs are accepted as messages and stored on disk, when the worker is started uncompleted jobs are picked up and executed.
+ *
+ * The constructor registers a new EventHandler at scope.onmessage to handle incoming messages by GHActServer running in the main thread.
+ *
+ * uses the GHTOKEN environment variable to authenticate the GitRepository if given.
+ *
+ * example usage:
+ * ```ts
+ * /// <reference lib="webworker" />
+ * import { GHActWorker, type Config, type Job } from ".";
+ * const config: Config = { ... };
+ * new GHActWorker(self, config, (job: Job, log) => {
+ *   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);
+ * });
+ * ```
+ */
+export class GHActWorker {
+  /** @internal */
+  private readonly queue: JobsDataBase;
+  /** @internal */
+  private isRunning = false;
+  /** @internal */
+  private readonly gitRepository: GitRepository;
 
-export type GhactConfig = {
-  email: string;
-  title: string;
-  description: string;
-  sourceBranch: string;
-  sourceRepository: string;
-  sourceRepositoryUri: string;
-  workDir: string;
-};
-
-export default class GhactServiceWorker {
-  queue: JobsDataBase;
-  isRunning = false;
-  gitRepository: GitRepository;
+  /**
+   * Note that the before execution of the jobHandler callback function,
+   * GHActWorker will pull the git repository into ${config.workDir}/repository.
+   *
+   * Any other git actions (e.g. commit of changed files) must be handled by the jobHandler.
+   */
   constructor(
-    scope: Window & typeof globalThis,
-    protected config: GhactConfig,
-    protected execute: (job: Job, log: (msg: string) => void) => void,
+    scope: (Window | WorkerGlobalScope) & typeof globalThis,
+    private readonly config: Config,
+    private readonly jobHandler: (job: Job, log: (msg: string) => void) => void,
   ) {
     console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
@@ -52,7 +65,9 @@ export default class GhactServiceWorker {
     };
     this.startTask();
   }
-  startTask() {
+
+  /** @ignore */
+  private startTask() {
     this.isRunning = true;
     try {
       this.run();
@@ -60,7 +75,9 @@ export default class GhactServiceWorker {
       this.isRunning = false;
     }
   }
-  run() {
+
+  /** @ignore */
+  private run() {
     while (this.queue.pendingJobs().length > 0) {
       const jobStatus = this.queue.pendingJobs()[0];
       const job = jobStatus.job;
@@ -76,7 +93,7 @@ export default class GhactServiceWorker {
       this.gitRepository.updateLocalData();
       try {
         this.queue.setStatus(job, "pending");
-        this.execute(job, log);
+        this.jobHandler(job, log);
         this.queue.setStatus(job, "completed");
         log("Completed job successfully");
         createBadge("OK", this.config.workDir);
@@ -90,7 +107,8 @@ export default class GhactServiceWorker {
     }
   }
 
-  async gatherJobsForFullUpdate() {
+  /** @ignore */
+  private async gatherJobsForFullUpdate() {
     this.isRunning = true;
     try {
       console.log("gathering jobs for full update");
@@ -100,7 +118,7 @@ export default class GhactServiceWorker {
       const jobs: Job[] = [];
       let files: string[] = [];
       for await (
-        const walkEntry of walk(this.gitRepository.workDir, {
+        const walkEntry of walk(this.gitRepository.directory, {
           exts: undefined,
           includeDirs: false,
           includeSymlinks: false,
@@ -108,7 +126,7 @@ export default class GhactServiceWorker {
       ) {
         if (walkEntry.isFile) {
           files.push(
-            walkEntry.path.replace(this.gitRepository.workDir, ""),
+            walkEntry.path.replace(this.gitRepository.directory, ""),
           );
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({

@@ -45,7 +45,10 @@ export class GHActWorker {
   constructor(
     scope: (Window | WorkerGlobalScope) & typeof globalThis,
     private readonly config: Config,
-    private readonly jobHandler: (job: Job, log: (msg: string) => void) => void,
+    private readonly jobHandler: (
+      job: Job,
+      log: (msg: string) => void,
+    ) => void | Promise<void>,
   ) {
     console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
@@ -55,31 +58,35 @@ export class GHActWorker {
       `${config.workDir}/repository`,
     );
     this.queue = new JobsDataBase(`${config.workDir}/jobs`);
-    scope.onmessage = (evt) => {
+    scope.onmessage = async (evt) => {
       const job = evt.data as Job | "FULLUPDATE";
       if (job === "FULLUPDATE") {
         this.gatherJobsForFullUpdate();
       } else {
         //job already added to db by frontend
-        if (!this.isRunning) this.startTask();
+        if (!this.isRunning) await this.startTask();
         else console.log("Already running");
       }
     };
     this.startTask();
   }
 
-  /** @ignore */
-  private startTask() {
+  /** @internal */
+  private async startTask() {
+    if (this.isRunning) {
+      console.warn("Already running");
+      return;
+    }
     this.isRunning = true;
     try {
-      this.run();
+      await this.run();
     } finally {
       this.isRunning = false;
     }
   }
 
-  /** @ignore */
-  private run() {
+  /** @internal */
+  private async run() {
     while (this.queue.pendingJobs().length > 0) {
       const jobStatus = this.queue.pendingJobs()[0];
       const job = jobStatus.job;
@@ -95,7 +102,7 @@ export class GHActWorker {
       this.gitRepository.updateLocalData();
       try {
         this.queue.setStatus(job, "pending");
-        this.jobHandler(job, log);
+        await this.jobHandler(job, log);
         this.queue.setStatus(job, "completed");
         log("Completed job successfully");
         createBadge("OK", this.config.workDir);
@@ -109,7 +116,7 @@ export class GHActWorker {
     }
   }
 
-  /** @ignore */
+  /** @internal */
   private async gatherJobsForFullUpdate() {
     this.isRunning = true;
     try {
@@ -170,7 +177,7 @@ export class GHActWorker {
       console.error("Could not create full-update jobs\n" + error);
     } finally {
       this.isRunning = false;
-      this.startTask();
+      await this.startTask();
     }
   }
 }

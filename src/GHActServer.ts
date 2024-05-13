@@ -124,7 +124,6 @@ export class GHActServer {
       }
       if (pathname === "/full_update") {
         console.log("· got full_update request");
-        console.log(this, this.worker);
         this.worker.postMessage("FULLUPDATE");
         return new Response(undefined, {
           status: Status.Accepted,

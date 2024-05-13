@@ -1,4 +1,10 @@
-import { serveDir, serveFile, Server, Status, STATUS_TEXT } from "./deps.ts";
+import {
+  serveDir,
+  serveFile,
+  Server,
+  STATUS_CODE,
+  STATUS_TEXT,
+} from "./deps.ts";
 import { type Config, type Job } from "../mod.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
@@ -97,8 +103,8 @@ export class GHActServer {
         const from = requestUrl.searchParams.get("from");
         if (!from) {
           return new Response("Query parameter 'from' required", {
-            status: Status.BadRequest,
-            statusText: STATUS_TEXT[Status.BadRequest],
+            status: STATUS_CODE.BadRequest,
+            statusText: STATUS_TEXT[STATUS_CODE.BadRequest],
           });
         }
         const till = requestUrl.searchParams.get("till") || "HEAD";
@@ -118,24 +124,24 @@ export class GHActServer {
           `Job submitted: ${JSON.stringify(job, undefined, 2)}`,
         );
         return new Response(undefined, {
-          status: Status.Accepted,
-          statusText: STATUS_TEXT[Status.Accepted],
+          status: STATUS_CODE.Accepted,
+          statusText: STATUS_TEXT[STATUS_CODE.Accepted],
         });
       }
       if (pathname === "/full_update") {
         console.log("· got full_update request");
         this.worker.postMessage("FULLUPDATE");
         return new Response(undefined, {
-          status: Status.Accepted,
-          statusText: STATUS_TEXT[Status.Accepted],
+          status: STATUS_CODE.Accepted,
+          statusText: STATUS_TEXT[STATUS_CODE.Accepted],
         });
       } else {
         if (
           WEBHOOK_SECRET && !(await verifySignature(request, WEBHOOK_SECRET))
         ) {
           return new Response("Unauthorized", {
-            status: Status.Unauthorized,
-            statusText: STATUS_TEXT[Status.Unauthorized],
+            status: STATUS_CODE.Unauthorized,
+            statusText: STATUS_TEXT[STATUS_CODE.Unauthorized],
           });
         }
         try {
@@ -146,15 +152,15 @@ export class GHActServer {
 
           if (!repoName) {
             return new Response("Invalid Payload", {
-              status: Status.BadRequest,
-              statusText: STATUS_TEXT[Status.BadRequest],
+              status: STATUS_CODE.BadRequest,
+              statusText: STATUS_TEXT[STATUS_CODE.BadRequest],
             });
           }
 
           if (repoName !== this.config.sourceRepository) {
             return new Response("Wrong Repository", {
-              status: Status.BadRequest,
-              statusText: STATUS_TEXT[Status.BadRequest],
+              status: STATUS_CODE.BadRequest,
+              statusText: STATUS_TEXT[STATUS_CODE.BadRequest],
             });
           }
           const job: Job = {
@@ -169,13 +175,13 @@ export class GHActServer {
             `Job submitted: ${JSON.stringify(job, undefined, 2)}`,
           );
           return new Response(undefined, {
-            status: Status.Accepted,
-            statusText: STATUS_TEXT[Status.Accepted],
+            status: STATUS_CODE.Accepted,
+            statusText: STATUS_TEXT[STATUS_CODE.Accepted],
           });
         } catch (error) {
           return new Response(error, {
-            status: Status.InternalServerError,
-            statusText: STATUS_TEXT[Status.InternalServerError],
+            status: STATUS_CODE.InternalServerError,
+            statusText: STATUS_TEXT[STATUS_CODE.InternalServerError],
           });
         }
       }

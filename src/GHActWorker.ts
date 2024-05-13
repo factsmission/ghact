@@ -31,8 +31,10 @@ export class GHActWorker {
   private readonly queue: JobsDataBase;
   /** @internal */
   private isRunning = false;
-  /** @internal */
-  private readonly gitRepository: GitRepository;
+  /**
+   * The source-repository
+   */
+  readonly gitRepository: GitRepository;
 
   /**
    * Note that the before execution of the jobHandler callback function,

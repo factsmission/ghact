@@ -105,13 +105,13 @@ export class GHActWorker {
         await this.jobHandler(job, log);
         this.queue.setStatus(job, "completed");
         log("Completed job successfully");
-        createBadge("OK", this.config.workDir);
+        createBadge("OK", this.config.workDir, this.config.title);
       } catch (error) {
         this.queue.setStatus(job, "failed");
         log("FAILED JOB");
         log(error);
         if (error.stack) log(error.stack);
-        createBadge("Failed", this.config.workDir);
+        createBadge("Failed", this.config.workDir, this.config.title);
       }
     }
   }

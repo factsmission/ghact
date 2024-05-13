@@ -188,6 +188,7 @@ export class GHActServer {
       response.headers.set("Content-Type", "image/svg+xml");
       return response;
     } else if (pathname === "/jobs.json") {
+      console.log("· Got request for jobs.json");
       const from = Number.parseInt(requestUrl.searchParams.get("from") || "0");
       const till = Number.parseInt(
         requestUrl.searchParams.get("till") || "200",

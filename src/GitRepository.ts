@@ -122,27 +122,29 @@ export class GitRepository {
   ) {
     log("starting git pull...");
 
-    const p = new Deno.Command("/usr/bin/git", {
-      args: ["pull"],
-      env: {
-        GIT_CEILING_DIRECTORIES: this.directory,
-      },
-      cwd: this.directory,
-    });
-    const { success, stdout, stderr } = p.outputSync();
-    if (!success) {
-      log("git pull failed:");
-    } else {
-      log("git pull successful:");
+    if (Deno.statSync(`${this.directory}/.git`).isDirectory) {
+      const p = new Deno.Command("/usr/bin/git", {
+        args: ["pull"],
+        env: {
+          GIT_CEILING_DIRECTORIES: this.directory,
+        },
+        cwd: this.directory,
+      });
+      const { success, stdout, stderr } = p.outputSync();
+      if (!success) {
+        log("git pull failed:");
+      } else {
+        log("git pull successful:");
+      }
+      log(new TextDecoder().decode(stdout));
+      log("STDERR:");
+      log(new TextDecoder().decode(stderr));
+      log("STDOUT:");
+      if (success) return;
     }
-    log(new TextDecoder().decode(stdout));
-    log("STDERR:");
-    log(new TextDecoder().decode(stderr));
-    log("STDOUT:");
-    if (!success) {
-      this.emptyDataDir();
-      this.cloneRepo(log);
-    }
+
+    this.emptyDataDir();
+    this.cloneRepo(log);
   }
 
   /**

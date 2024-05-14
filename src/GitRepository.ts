@@ -1,4 +1,5 @@
 import { type Job } from "../mod.ts";
+import { existsSync } from "./deps.ts";
 
 /**
  * added, removed and modified contiain the respective changed files as a list of paths (strings)
@@ -83,6 +84,9 @@ export class GitRepository {
    */
   cloneRepo(log: (msg: string) => void = console.log) {
     log(`Cloning ${this.uri}. This will take some time.`);
+    if (existsSync(this.directory)) {
+      Deno.mkdirSync(this.directory, { recursive: true });
+    }
     const p = new Deno.Command("/usr/bin/git", {
       args: [
         "clone",
@@ -122,7 +126,7 @@ export class GitRepository {
   ) {
     log("starting git pull...");
 
-    if (Deno.statSync(`${this.directory}/.git`).isDirectory) {
+    if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
       const p = new Deno.Command("/usr/bin/git", {
         args: ["pull"],
         env: {

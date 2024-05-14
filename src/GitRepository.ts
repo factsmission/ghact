@@ -92,8 +92,11 @@ export class GitRepository {
         "clone",
         "--single-branch",
         "--quiet",
-        `--branch`,
-        `${this.branch}`,
+        // this will make it download only blobs(=files) as present in the
+        // latest commit. History and histroical trees are still cloned, but old
+        // verions of files are only downloaded if needed (e.g. by git diff)
+        "--filter=blob:none",
+        `--branch=${this.branch}`,
         this.authUri,
         `.`,
       ],

@@ -78,3 +78,18 @@ export interface Job {
     removed?: string[];
   };
 }
+
+/**
+ * This function is passed to the jobHandler and is used to log messages to the
+ * respective logfiles. It will also log the messages to the console.
+ *
+ * If a string is passed, the promise is resolved instantly, and it may be
+ * treated as a sync function returning void.
+ *
+ * If a ReadableStream is passed (e.g. output from an external command) then the
+ * promise only resolves after the write has finished. In this case you must
+ * await the promise.
+ */
+export type LogFn = (
+  message: string | ReadableStream<Uint8Array>,
+) => Promise<void>;

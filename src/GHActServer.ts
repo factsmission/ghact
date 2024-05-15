@@ -61,9 +61,11 @@ export class GHActServer {
         j.status === "completed" || j.status === "failed"
       )
         ?.status || "Unknown";
-    if (latest === "failed") createBadge("Failed", this.config.workDir, this.config.title);
-    else if (latest === "completed") createBadge("OK", this.config.workDir, this.config.title);
-    else createBadge("Unknown", this.config.workDir, this.config.title);
+    if (latest === "failed") {
+      createBadge("Failed", this.config.workDir, this.config.title);
+    } else if (latest === "completed") {
+      createBadge("OK", this.config.workDir, this.config.title);
+    } else createBadge("Unknown", this.config.workDir, this.config.title);
 
     if (
       !this.config.sourceRepositoryUri.includes(this.config.sourceRepository)

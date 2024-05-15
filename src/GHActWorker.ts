@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { type Config, GitRepository, type Job } from "../mod.ts";
+import { type Config, GitRepository, type Job, type LogFn } from "../mod.ts";
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
@@ -47,10 +47,9 @@ export class GHActWorker {
     private readonly config: Config,
     private readonly jobHandler: (
       job: Job,
-      log: (msg: string) => void,
+      log: LogFn,
     ) => void | Promise<void>,
   ) {
-    console.log("constructing GitRepository");
     this.gitRepository = new GitRepository(
       config.sourceRepositoryUri,
       config.sourceBranch,
@@ -90,27 +89,47 @@ export class GHActWorker {
     while (this.queue.pendingJobs().length > 0) {
       const jobStatus = this.queue.pendingJobs()[0];
       const job = jobStatus.job;
-      const log = (msg: string) => {
-        Deno.writeTextFileSync(
-          path.join(jobStatus.dir, "log.txt"),
-          msg + "\n",
-          {
-            append: true,
-          },
-        );
+
+      const log: LogFn = (msg) => {
+        if (typeof msg === "string") {
+          Deno.writeTextFileSync(
+            path.join(jobStatus.dir, "log.txt"),
+            msg + "\n",
+            {
+              append: true,
+            },
+          );
+          console.log(msg);
+          return Promise.resolve();
+        } else {
+          const [toConsole, toFile] = msg.tee();
+          return Promise.allSettled([
+            toConsole.pipeTo(Deno.stdout.writable, {
+              preventCancel: true,
+              preventClose: true,
+            }),
+            toFile.pipeTo(
+              Deno.openSync(path.join(jobStatus.dir, "log.txt"), {
+                create: true,
+                append: true,
+              }).writable,
+            ),
+          ]).then(() => {});
+        }
       };
-      this.gitRepository.updateLocalData(log);
+
+      await this.gitRepository.updateLocalData(log);
       try {
         this.queue.setStatus(job, "pending");
         await this.jobHandler(job, log);
         this.queue.setStatus(job, "completed");
-        log("Completed job successfully");
+        await log("Completed job successfully");
         createBadge("OK", this.config.workDir, this.config.title);
       } catch (error) {
         this.queue.setStatus(job, "failed");
-        log("FAILED JOB");
-        log(error);
-        if (error.stack) log(error.stack);
+        await log("FAILED JOB");
+        await log(error);
+        if (error.stack) await log(error.stack);
         createBadge("Failed", this.config.workDir, this.config.title);
       }
     }
@@ -121,7 +140,7 @@ export class GHActWorker {
     this.isRunning = true;
     try {
       console.log("gathering jobs for full update");
-      this.gitRepository.updateLocalData();
+      await this.gitRepository.updateLocalData();
       const date = (new Date()).toISOString();
       let block = 0;
       const jobs: Job[] = [];

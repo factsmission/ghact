@@ -1,5 +1,6 @@
-import { type Job } from "../mod.ts";
+import { type Job, type LogFn } from "../mod.ts";
 import { existsSync } from "./deps.ts";
+import { combineCommandOutputs } from "./log.ts";
 
 /**
  * added, removed and modified contiain the respective changed files as a list of paths (strings)
@@ -14,6 +15,18 @@ export interface ChangeSummary {
   /** commit hash of commit up until which changes were considered */
   till: string;
 }
+
+const consoleLog: LogFn = (msg) => {
+  if (typeof msg === "string") {
+    console.log(msg);
+    return Promise.resolve();
+  } else {
+    return msg.pipeTo(Deno.stdout.writable, {
+      preventCancel: true,
+      preventClose: true,
+    });
+  }
+};
 
 /**
  * Represents a git repository on disk, with convenience functions to manage it.
@@ -87,16 +100,16 @@ export class GitRepository {
    * exclude previous verisions of files. May or may not speed up the clone;
    * will reduce the amount of storage occupied by the repository.
    */
-  cloneRepo(log: (msg: string) => void = console.log, blobless = true) {
-    log(`Cloning ${this.uri}. This will take some time.`);
+  async cloneRepo(log: LogFn = consoleLog, blobless = true) {
+    await log(`Cloning ${this.uri}. This will take some time.`);
     if (existsSync(this.directory)) {
       Deno.mkdirSync(this.directory, { recursive: true });
     }
-    const p = new Deno.Command("/usr/bin/git", {
+    const command = new Deno.Command("/usr/bin/git", {
       args: [
         "clone",
         "--single-branch",
-        "--quiet",
+        // "--quiet",
         // this will make it download only blobs(=files) as present in the
         // latest commit. History and historical trees are still cloned, but old
         // verions of files are only downloaded if needed (e.g. by git diff)
@@ -106,18 +119,22 @@ export class GitRepository {
         `.`,
       ],
       cwd: this.directory,
+      stdin: "null",
+      stderr: "piped",
+      stdout: "piped",
     });
-    const { success, stdout, stderr } = p.outputSync();
-    if (!success) {
-      log("git clone failed:");
+    const child = command.spawn();
+
+    await log(combineCommandOutputs(child.stdout, child.stderr));
+
+    // manually close stdin
+    // child.stdin.close();
+    const { success } = await child.status;
+
+    if (success) {
+      await log("git clone successful");
     } else {
-      log("git clone succesful:");
-    }
-    log("STDOUT:");
-    log(new TextDecoder().decode(stdout));
-    log("STDERR:");
-    log(new TextDecoder().decode(stderr));
-    if (!success) {
+      await log("git clone failed");
       throw new Error(
         `Cloning of ${this.uri} into ${this.directory} failed, see logs.`,
       );
@@ -129,10 +146,8 @@ export class GitRepository {
    *
    * if it fails, it automatically calls `this.emptyDataDir()` and `this.cloneRepo(log)`.
    */
-  updateLocalData(
-    log: (msg: string) => void = console.log,
-  ) {
-    log("starting git pull...");
+  async updateLocalData(log: LogFn = consoleLog) {
+    await log("starting git pull...");
 
     if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
       const p = new Deno.Command("/usr/bin/git", {
@@ -144,19 +159,19 @@ export class GitRepository {
       });
       const { success, stdout, stderr } = p.outputSync();
       if (!success) {
-        log("git pull failed:");
+        await log("git pull failed:");
       } else {
-        log("git pull successful:");
+        await log("git pull successful:");
       }
-      log(new TextDecoder().decode(stdout));
-      log("STDERR:");
-      log(new TextDecoder().decode(stderr));
-      log("STDOUT:");
+      await log(new TextDecoder().decode(stdout));
+      await log("STDERR:");
+      await log(new TextDecoder().decode(stderr));
+      await log("STDOUT:");
       if (success) return;
     }
 
     this.emptyDataDir();
-    this.cloneRepo(log);
+    await this.cloneRepo(log);
   }
 
   /**
@@ -168,12 +183,12 @@ export class GitRepository {
    * @param tillCommit Commit hash, defaults to "HEAD"
    * @returns ChangeSummary describing the files changed between the two commits.
    */
-  getModifiedAfter(
+  async getModifiedAfter(
     fromCommit: string,
     tillCommit = "HEAD",
-    log: (msg: string) => void = console.log,
-  ): ChangeSummary {
-    this.updateLocalData(log);
+    log: LogFn = consoleLog,
+  ): Promise<ChangeSummary> {
+    await this.updateLocalData(log);
     const p = new Deno.Command("/usr/bin/git", {
       args: [
         "diff",
@@ -232,7 +247,7 @@ export class GitRepository {
   /**
    * Wrapper for `git push`
    */
-  push(log: (msg: string) => void = console.log) {
+  push(log: LogFn = consoleLog) {
     const p = new Deno.Command("/usr/bin/git", {
       args: [
         "push",
@@ -261,7 +276,7 @@ export class GitRepository {
    * git commit --quiet -m "${message}"
    * ```
    */
-  commit(job: Job, message: string, log: (msg: string) => void = console.log) {
+  commit(job: Job, message: string, log: LogFn = consoleLog) {
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A

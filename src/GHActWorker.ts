@@ -99,7 +99,7 @@ export class GHActWorker {
           },
         );
       };
-      this.gitRepository.updateLocalData();
+      this.gitRepository.updateLocalData(log);
       try {
         this.queue.setStatus(job, "pending");
         await this.jobHandler(job, log);

@@ -1,6 +1,7 @@
 export { GHActServer } from "./src/GHActServer.ts";
 export { GHActWorker } from "./src/GHActWorker.ts";
 export { type ChangeSummary, GitRepository } from "./src/GitRepository.ts";
+export { combineCommandOutputs } from "./src/log.ts";
 
 /**
  * Options for configuring GHAct

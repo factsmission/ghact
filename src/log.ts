@@ -27,15 +27,34 @@ export const createBadge = (
   return Deno.writeTextFileSync(`${workDir}/status.svg`, svg);
 };
 
-export const combineCommandOutputs = (
+/**
+ * Combines two `ReadableStream<Uint8Array>`s into one, interleaving them
+ * line-by-line and prefixing them with `OUT> ` and `ERR> ` respectively.
+ *
+ * @example Usage with `LogFn`
+ * ```ts
+ * import { combineCommandOutputs, type LogFn } from "."
+ * const log: LogFn = // ... ;
+ * const command = new Deno.Command("bash", {
+ *   args: ["-c", 'echo "This is stdout"; echo "This is stderr" >&2'],
+ *   stdin: "null",
+ *   stderr: "piped",
+ *   stdout: "piped",
+ * });
+ * const child = command.spawn();
+ * await log(combineCommandOutputs(child.stdout, child.stderr));
+ * const { success } = await child.status;
+ * ```
+ */
+export function combineCommandOutputs(
   stdout: ReadableStream<Uint8Array>,
   stderr: ReadableStream<Uint8Array>,
-): ReadableStream<Uint8Array> => {
+): ReadableStream<Uint8Array> {
   return mergeReadableStreams(
     markCommandOutput(stdout, "OUT>"),
     markCommandOutput(stderr, "ERR>"),
   ).pipeThrough(new TextEncoderStream());
-};
+}
 
 export const commandOutputToLines = (
   stream: ReadableStream<Uint8Array>,

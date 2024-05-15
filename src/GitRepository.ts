@@ -1,6 +1,6 @@
 import { type Job, type LogFn } from "../mod.ts";
 import { existsSync } from "./deps.ts";
-import { combineCommandOutputs } from "./log.ts";
+import { combineCommandOutputs, commandOutputToLines } from "./log.ts";
 
 /**
  * added, removed and modified contiain the respective changed files as a list of paths (strings)
@@ -124,11 +124,7 @@ export class GitRepository {
       stdout: "piped",
     });
     const child = command.spawn();
-
     await log(combineCommandOutputs(child.stdout, child.stderr));
-
-    // manually close stdin
-    // child.stdin.close();
     const { success } = await child.status;
 
     if (success) {
@@ -150,23 +146,25 @@ export class GitRepository {
     await log("starting git pull...");
 
     if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
-      const p = new Deno.Command("/usr/bin/git", {
+      const command = new Deno.Command("/usr/bin/git", {
         args: ["pull"],
         env: {
           GIT_CEILING_DIRECTORIES: this.directory,
         },
         cwd: this.directory,
+        stdin: "null",
+        stderr: "piped",
+        stdout: "piped",
       });
-      const { success, stdout, stderr } = p.outputSync();
+      const child = command.spawn();
+      await log(combineCommandOutputs(child.stdout, child.stderr));
+      const { success } = await child.status;
+
       if (!success) {
         await log("git pull failed:");
       } else {
         await log("git pull successful:");
       }
-      await log(new TextDecoder().decode(stdout));
-      await log("STDERR:");
-      await log(new TextDecoder().decode(stderr));
-      await log("STDOUT:");
       if (success) return;
     }
 
@@ -189,7 +187,7 @@ export class GitRepository {
     log: LogFn = consoleLog,
   ): Promise<ChangeSummary> {
     await this.updateLocalData(log);
-    const p = new Deno.Command("/usr/bin/git", {
+    const command = new Deno.Command("/usr/bin/git", {
       args: [
         "diff",
         "--name-status",
@@ -198,15 +196,18 @@ export class GitRepository {
         tillCommit,
       ],
       cwd: this.directory,
+      stdin: "null",
+      stderr: "piped",
+      stdout: "piped",
     });
-    const { success, stdout, stderr } = p.outputSync();
-    log("STDOUT:");
-    log(new TextDecoder().decode(stdout));
-    log("STDERR:");
-    log(new TextDecoder().decode(stderr));
+    const child = command.spawn();
+    const [stdout, stdoutForLog] = child.stdout.tee();
+    await log(combineCommandOutputs(stdoutForLog, child.stderr));
+    const { success } = await child.status;
     if (!success) {
       throw new Error("Abort.");
     }
+
     if (tillCommit === "HEAD") {
       const p = new Deno.Command("/usr/bin/git", {
         args: [
@@ -221,11 +222,13 @@ export class GitRepository {
         log("HEAD is: " + tillCommit);
       }
     }
-    const typedFiles = new TextDecoder().decode(stdout).split("\n").filter((
-      s,
-    ) => s.length > 0).map((s) =>
-      s.split(/(\s+)/).filter((p) => p.trim().length > 0)
-    );
+
+    const typedFiles = (await Array.fromAsync(commandOutputToLines(stdout)))
+      .filter((
+        s,
+      ) => s.length > 0).map((s) =>
+        s.split(/(\s+)/).filter((p) => p.trim().length > 0)
+      );
     const weirdFiles = typedFiles.filter((t) =>
       t[0] !== "A" && t[0] !== "M" && t[0] !== "D"
     );
@@ -247,20 +250,21 @@ export class GitRepository {
   /**
    * Wrapper for `git push`
    */
-  push(log: LogFn = consoleLog) {
-    const p = new Deno.Command("/usr/bin/git", {
+  async push(log: LogFn = consoleLog) {
+    const command = new Deno.Command("/usr/bin/git", {
       args: [
         "push",
         "--quiet",
         this.authUri,
       ],
       cwd: this.directory,
+      stdin: "null",
+      stderr: "piped",
+      stdout: "piped",
     });
-    const { success, stdout, stderr } = p.outputSync();
-    log("git push STDOUT:");
-    log(new TextDecoder().decode(stdout));
-    log("git push STDERR:");
-    log(new TextDecoder().decode(stderr));
+    const child = command.spawn();
+    await log(combineCommandOutputs(child.stdout, child.stderr));
+    const { success } = await child.status;
     if (!success) {
       throw new Error("git push failed, see logs.");
     }
@@ -276,23 +280,26 @@ export class GitRepository {
    * git commit --quiet -m "${message}"
    * ```
    */
-  commit(job: Job, message: string, log: LogFn = consoleLog) {
+  async commit(job: Job, message: string, log: LogFn = consoleLog) {
+    await log("making git commit:");
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A
-                      git commit --quiet -m ${JSON.stringify(message)}`;
-    const p = new Deno.Command("bash", {
+                      git commit -m ${JSON.stringify(message)}`;
+    const command = new Deno.Command("bash", {
       args: [
         "-c",
         commands,
       ],
       cwd: this.directory,
+      stdin: "null",
+      stderr: "piped",
+      stdout: "piped",
     });
-    const { success, stdout, stderr } = p.outputSync();
-    log("git commit STDOUT:");
-    log(new TextDecoder().decode(stdout));
-    log("git commit STDERR:");
-    log(new TextDecoder().decode(stderr));
+    const child = command.spawn();
+    await log(combineCommandOutputs(child.stdout, child.stderr));
+    const { success } = await child.status;
+
     if (!success) {
       throw new Error("git commit failed, see logs.");
     }

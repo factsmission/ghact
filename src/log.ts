@@ -37,13 +37,19 @@ export const combineCommandOutputs = (
   ).pipeThrough(new TextEncoderStream());
 };
 
+export const commandOutputToLines = (
+  stream: ReadableStream<Uint8Array>,
+): ReadableStream<string> => {
+  return stream
+    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(new TextLineStream());
+};
+
 const markCommandOutput = (
   stream: ReadableStream<Uint8Array>,
   marker: string,
 ): ReadableStream<string> => {
-  return stream
-    .pipeThrough(new TextDecoderStream())
-    .pipeThrough(new TextLineStream())
+  return commandOutputToLines(stream)
     .pipeThrough(toTransformStream(async function* (src) {
       for await (const chunk of src) {
         yield `${marker} ${chunk}`;

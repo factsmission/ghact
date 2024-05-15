@@ -96,11 +96,11 @@ export class GitRepository {
    * `.updateLocalData()` if the repository may already be cloned,
    * `.updateLocalData()` will only clone if neccesary.
    *
-   * @param {boolean} [blobless=true] Whether to use --filter=blob:none to
+   * @param {boolean} [blobless=false] Whether to use --filter=blob:none to
    * exclude previous verisions of files. May or may not speed up the clone;
    * will reduce the amount of storage occupied by the repository.
    */
-  async cloneRepo(log: LogFn = consoleLog, blobless = true) {
+  async cloneRepo(log: LogFn = consoleLog, blobless = false) {
     await log(`Cloning ${this.uri}. This will take some time.`);
     if (existsSync(this.directory)) {
       Deno.mkdirSync(this.directory, { recursive: true });

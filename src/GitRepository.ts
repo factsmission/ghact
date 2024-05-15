@@ -79,10 +79,15 @@ export class GitRepository {
   /**
    * Clones the repo into the directory (git clone).
    *
-   * Please ensure that the directory is empty beforehand
-   * or use `.updateLocalData()` if the repository may already be cloned, `.updateLocalData()` will only clone if neccesary.
+   * Please ensure that the directory is empty beforehand or use
+   * `.updateLocalData()` if the repository may already be cloned,
+   * `.updateLocalData()` will only clone if neccesary.
+   *
+   * @param {boolean} [blobless=true] Whether to use --filter=blob:none to
+   * exclude previous verisions of files. May or may not speed up the clone;
+   * will reduce the amount of storage occupied by the repository.
    */
-  cloneRepo(log: (msg: string) => void = console.log) {
+  cloneRepo(log: (msg: string) => void = console.log, blobless = true) {
     log(`Cloning ${this.uri}. This will take some time.`);
     if (existsSync(this.directory)) {
       Deno.mkdirSync(this.directory, { recursive: true });
@@ -93,9 +98,9 @@ export class GitRepository {
         "--single-branch",
         "--quiet",
         // this will make it download only blobs(=files) as present in the
-        // latest commit. History and histroical trees are still cloned, but old
+        // latest commit. History and historical trees are still cloned, but old
         // verions of files are only downloaded if needed (e.g. by git diff)
-        "--filter=blob:none",
+        blobless ? "--filter=blob:none" : "",
         `--branch=${this.branch}`,
         this.authUri,
         `.`,

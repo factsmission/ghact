@@ -1,7 +1,7 @@
 export { GHActServer } from "./src/GHActServer.ts";
 export { GHActWorker } from "./src/GHActWorker.ts";
 export { GitRepository } from "./src/GitRepository.ts";
-export { combineCommandOutputs } from "./src/log.ts";
+export { combineCommandOutputs, LogFn } from "./src/log.ts";
 
 /**
  * Options for configuring GHAct
@@ -117,23 +117,9 @@ export interface FullUpdateJob extends BasicJob {
  * Represents the task of gathering files for full_update
  */
 export interface FullUpdateGatherJob extends BasicJob {
+  /** Type of the Job */
   type: "full_update_gather";
 }
 
 /** Describes a Job */
 export type Job = WebhookJob | FullUpdateJob | BasicJob;
-
-/**
- * This function is passed to the jobHandler and is used to log messages to the
- * respective logfiles. It will also log the messages to the console.
- *
- * If a string is passed, the promise is resolved instantly, and it may be
- * treated as a sync function returning void.
- *
- * If a ReadableStream is passed (e.g. output from an external command) then the
- * promise only resolves after the write has finished. In this case you must
- * await the promise.
- */
-export type LogFn = (
-  message: string | ReadableStream<Uint8Array>,
-) => Promise<void>;

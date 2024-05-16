@@ -6,10 +6,9 @@ import {
   type FullUpdateJob,
   GitRepository,
   type Job,
-  type LogFn,
 } from "../mod.ts";
 import { path, walk } from "./deps.ts";
-import { createBadge } from "./log.ts";
+import { createBadge, LogFn } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
 
 const GHTOKEN = Deno.env.get("GHTOKEN");
@@ -91,33 +90,7 @@ export class GHActWorker {
       const jobStatus = this.queue.pendingJobs()[0];
       const job = jobStatus.job;
 
-      const log: LogFn = (msg) => {
-        if (msg instanceof ReadableStream) {
-          const [toConsole, toFile] = msg.tee();
-          return Promise.allSettled([
-            toConsole.pipeTo(Deno.stdout.writable, {
-              preventCancel: true,
-              preventClose: true,
-            }),
-            toFile.pipeTo(
-              Deno.openSync(path.join(jobStatus.dir, "log.txt"), {
-                create: true,
-                append: true,
-              }).writable,
-            ),
-          ]).then(() => {});
-        } else {
-          Deno.writeTextFileSync(
-            path.join(jobStatus.dir, "log.txt"),
-            msg + "\n",
-            {
-              append: true,
-            },
-          );
-          console.log(msg);
-          return Promise.resolve();
-        }
-      };
+      const log = new LogFn(path.join(jobStatus.dir, "log.txt"), true);
 
       try {
         this.queue.setStatus(job, "pending");

@@ -1,18 +1,8 @@
-import { type ChangeSummary, type Job, type LogFn } from "../mod.ts";
+import { type ChangeSummary, type Job } from "../mod.ts";
 import { existsSync } from "./deps.ts";
-import { combineCommandOutputs, commandOutputToLines } from "./log.ts";
+import { combineCommandOutputs, commandOutputToLines, LogFn } from "./log.ts";
 
-const consoleLog: LogFn = (msg) => {
-  if (msg instanceof ReadableStream) {
-    return msg.pipeTo(Deno.stdout.writable, {
-      preventCancel: true,
-      preventClose: true,
-    });
-  } else {
-    console.log(msg);
-    return Promise.resolve();
-  }
-};
+const consoleLog = new LogFn(false, true);
 
 /**
  * Represents a git repository on disk, with convenience functions to manage it.

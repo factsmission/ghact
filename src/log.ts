@@ -61,7 +61,12 @@ export const commandOutputToLines = (
 ): ReadableStream<string> => {
   return stream
     .pipeThrough(new TextDecoderStream())
-    .pipeThrough(new TextLineStream());
+    .pipeThrough(new TextLineStream())
+    .pipeThrough(toTransformStream(async function* (src) {
+      for await (const chunk of src) {
+        yield chunk + "\n";
+      }
+    }));
 };
 
 const markCommandOutput = (
@@ -73,6 +78,5 @@ const markCommandOutput = (
       for await (const chunk of src) {
         yield `${marker} ${chunk}`;
       }
-      yield "\n";
     }));
 };

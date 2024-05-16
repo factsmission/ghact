@@ -1,6 +1,6 @@
 export { GHActServer } from "./src/GHActServer.ts";
 export { GHActWorker } from "./src/GHActWorker.ts";
-export { type ChangeSummary, GitRepository } from "./src/GitRepository.ts";
+export { GitRepository } from "./src/GitRepository.ts";
 export { combineCommandOutputs } from "./src/log.ts";
 
 /**
@@ -50,18 +50,36 @@ export interface Config {
   workDir: string;
 }
 
-/** Describes a Job */
-export interface Job {
+/**
+ * added, removed and modified contiain the respective changed files as a list of paths (strings)
+ */
+export interface ChangeSummary {
+  /** commit hash of commit since which changes are considered */
+  from: string;
+  /** commit hash of commit up until which changes were considered */
+  till: string;
+  /** files added in the requested span of commits */
+  added: string[];
+  /** files removed in the requested span of commits */
+  removed: string[];
+  /** files modified in the requested span of commits */
+  modified: string[];
+}
+
+/**
+ * Properties present for all jobs
+ */
+export interface BasicJob {
   /**
    * ID always starts with a date-stamp
    */
   id: string;
   /**
-   * Indicates the commit since which changes are considered
+   * Indicates the commit since which changes are to be considered
    */
   from?: string;
   /**
-   * Indicates the commit until which changes are considered
+   * Indicates the commit until which changes are to be considered
    */
   till?: string;
   /**
@@ -71,14 +89,39 @@ export interface Job {
     name: string;
     email: string;
   };
-  /**
-   * Only used for full_update
-   */
-  files?: {
-    modified?: string[];
-    removed?: string[];
-  };
 }
+
+/**
+ * A job which was triggered by a webhook.
+ *
+ * Already contains ChangeSummary as this information is provided by the webhook.
+ */
+export interface WebhookJob extends BasicJob {
+  /**
+   * Relevant changes as provided by the webhook payload
+   */
+  files: ChangeSummary;
+}
+
+/**
+ * A job which was triggered by a request to /full_update
+ */
+export interface FullUpdateJob extends BasicJob {
+  /**
+   * Slice of files that were present when the full_update was triggered
+   */
+  files: { modified: string[] };
+}
+
+/**
+ * Represents the task of gathering files for full_update
+ */
+export interface FullUpdateGatherJob extends BasicJob {
+  type: "full_update_gather";
+}
+
+/** Describes a Job */
+export type Job = WebhookJob | FullUpdateJob | BasicJob;
 
 /**
  * This function is passed to the jobHandler and is used to log messages to the

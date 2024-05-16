@@ -1,6 +1,13 @@
 /// <reference lib="webworker" />
 
-import { type Config, GitRepository, type Job, type LogFn } from "../mod.ts";
+import {
+  type Config,
+  type FullUpdateGatherJob,
+  type FullUpdateJob,
+  GitRepository,
+  type Job,
+  type LogFn,
+} from "../mod.ts";
 import { path, walk } from "./deps.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
@@ -57,17 +64,11 @@ export class GHActWorker {
       `${config.workDir}/repository`,
     );
     this.queue = new JobsDataBase(`${config.workDir}/jobs`);
-    scope.onmessage = async (evt) => {
-      const job = evt.data as Job | "FULLUPDATE";
-      if (job === "FULLUPDATE") {
-        this.gatherJobsForFullUpdate();
-      } else {
-        //job already added to db by frontend
-        if (!this.isRunning) await this.startTask();
-        else console.log("Already running");
-      }
+    scope.onmessage = async () => {
+      // Jobs are queued by frontend already
+      if (!this.isRunning) await this.startTask();
+      else console.log("Already running");
     };
-    this.startTask();
   }
 
   /** @internal */
@@ -118,16 +119,22 @@ export class GHActWorker {
         }
       };
 
-      await this.gitRepository.updateLocalData(log);
       try {
         this.queue.setStatus(job, "pending");
-        await this.jobHandler(job, log);
-        this.queue.setStatus(job, "completed");
-        await log("Completed job successfully");
-        createBadge("OK", this.config.workDir, this.config.title);
+        await log(`=== Starting job ${job.id} ===`);
+        if ("type" in job && job.type === "full_update_gather") {
+          await this.gatherJobsForFullUpdate(job, log);
+          // gatherJobsForFullUpdate handles setting job status itself
+        } else {
+          await this.gitRepository.updateLocalData(log);
+          await this.jobHandler(job, log);
+          this.queue.setStatus(job, "completed");
+          await log(`=== Sucessfully completed job ${job.id} ===`);
+          createBadge("OK", this.config.workDir, this.config.title);
+        }
       } catch (error) {
         this.queue.setStatus(job, "failed");
-        await log("FAILED JOB");
+        await log(`=== Failed job ${job.id} ===\n=== Error: ===`);
         await log(error);
         if (error.stack) await log(error.stack);
         createBadge("Failed", this.config.workDir, this.config.title);
@@ -136,14 +143,13 @@ export class GHActWorker {
   }
 
   /** @internal */
-  private async gatherJobsForFullUpdate() {
+  private async gatherJobsForFullUpdate(job: FullUpdateGatherJob, log: LogFn) {
     this.isRunning = true;
     try {
-      console.log("gathering jobs for full update");
       await this.gitRepository.updateLocalData();
-      const date = (new Date()).toISOString();
+      const date = job.id.split(" ")[0];
       let block = 0;
-      const jobs: Job[] = [];
+      const jobs: FullUpdateJob[] = [];
       let files: string[] = [];
       for await (
         const walkEntry of walk(this.gitRepository.directory, {
@@ -165,14 +171,12 @@ export class GHActWorker {
               id: `${date} full update: ${
                 (++block).toString(10).padStart(3, "0")
               }`, // note that the id must begin with a datestamp for correct ordering
-              files: {
-                modified: files,
-              },
+              files: { modified: files },
             });
             files = [];
           }
         } else {
-          console.log("skipped", walkEntry.path);
+          await log(`skipped ${walkEntry.path}`);
         }
       }
       if (files.length > 0) {
@@ -182,18 +186,21 @@ export class GHActWorker {
             email: this.config.email,
           },
           id: `${date} full update: ${(++block).toString(10).padStart(3, "0")}`, // note that the id must begin with a datestamp for correct ordering
-          files: {
-            modified: files,
-          },
+          files: { modified: files },
         });
       }
       jobs.forEach((j) => {
         j.id += ` of ${block.toString(10).padStart(3, "0")}`;
         this.queue.addJob(j);
       });
-      console.log(`succesfully created full-update jobs (${block} jobs)`);
+      await log(`Created ${block} jobs for full update`);
+      await log(`=== Sucessfully completed job ${job.id} ===`);
+      this.queue.setStatus(job, "completed");
     } catch (error) {
-      console.error("Could not create full-update jobs\n" + error);
+      this.queue.setStatus(job, "failed");
+      await log(`=== Failed job ${job.id} ===\n=== Error: ===`);
+      await log(error);
+      if (error.stack) await log(error.stack);
     } finally {
       this.isRunning = false;
       await this.startTask();

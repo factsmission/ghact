@@ -1,20 +1,6 @@
-import { type Job, type LogFn } from "../mod.ts";
+import { type ChangeSummary, type Job, type LogFn } from "../mod.ts";
 import { existsSync } from "./deps.ts";
 import { combineCommandOutputs, commandOutputToLines } from "./log.ts";
-
-/**
- * added, removed and modified contiain the respective changed files as a list of paths (strings)
- */
-export interface ChangeSummary {
-  /** files added in the requested span of commits */
-  added: string[];
-  /** files removed in the requested span of commits */
-  removed: string[];
-  /** files modified in the requested span of commits */
-  modified: string[];
-  /** commit hash of commit up until which changes were considered */
-  till: string;
-}
 
 const consoleLog: LogFn = (msg) => {
   if (msg instanceof ReadableStream) {
@@ -101,7 +87,9 @@ export class GitRepository {
    * will reduce the amount of storage occupied by the repository.
    */
   async cloneRepo(log: LogFn = consoleLog, blobless = false) {
-    await log(`Cloning ${this.uri}. This will take some time.`);
+    await log(
+      `== starting git clone for ${this.uri} ==\n== this may take some time ==`,
+    );
     if (existsSync(this.directory)) {
       Deno.mkdirSync(this.directory, { recursive: true });
     }
@@ -128,9 +116,9 @@ export class GitRepository {
     const { success } = await child.status;
 
     if (success) {
-      await log("git clone successful");
+      await log("== git clone successful ==");
     } else {
-      await log("git clone failed");
+      await log("== git clone failed ==");
       throw new Error(
         `Cloning of ${this.uri} into ${this.directory} failed, see logs.`,
       );
@@ -143,7 +131,7 @@ export class GitRepository {
    * if it fails, it automatically calls `this.emptyDataDir()` and `this.cloneRepo(log)`.
    */
   async updateLocalData(log: LogFn = consoleLog) {
-    await log("starting git pull...");
+    await log("== starting git pull ==");
 
     if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
       const command = new Deno.Command("/usr/bin/git", {
@@ -161,9 +149,9 @@ export class GitRepository {
       const { success } = await child.status;
 
       if (!success) {
-        await log("git pull failed:");
+        await log("== git pull failed, will attempt to clone instead ==");
       } else {
-        await log("git pull successful:");
+        await log("== git pull successful ==");
       }
       if (success) return;
     }
@@ -187,6 +175,7 @@ export class GitRepository {
     log: LogFn = consoleLog,
   ): Promise<ChangeSummary> {
     await this.updateLocalData(log);
+    await log("== git diff ==");
     const command = new Deno.Command("/usr/bin/git", {
       args: [
         "diff",
@@ -205,7 +194,7 @@ export class GitRepository {
     await log(combineCommandOutputs(stdoutForLog, child.stderr));
     const { success } = await child.status;
     if (!success) {
-      throw new Error("Abort.");
+      throw new Error("git diff failed, see logs.");
     }
 
     if (tillCommit === "HEAD") {
@@ -243,6 +232,7 @@ export class GitRepository {
       added: typedFiles.filter((t) => t[0] === "A").map((t) => t[1]),
       modified: typedFiles.filter((t) => t[0] === "M").map((t) => t[1]),
       removed: typedFiles.filter((t) => t[0] === "D").map((t) => t[1]),
+      from: fromCommit,
       till: tillCommit,
     });
   }
@@ -251,6 +241,7 @@ export class GitRepository {
    * Wrapper for `git push`
    */
   async push(log: LogFn = consoleLog) {
+    await log("== git push ==");
     const command = new Deno.Command("/usr/bin/git", {
       args: [
         "push",
@@ -281,7 +272,7 @@ export class GitRepository {
    * ```
    */
   async commit(job: Job, message: string, log: LogFn = consoleLog) {
-    await log("making git commit:");
+    await log("== git commit ==");
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A

@@ -17,14 +17,14 @@ export interface ChangeSummary {
 }
 
 const consoleLog: LogFn = (msg) => {
-  if (typeof msg === "string") {
-    console.log(msg);
-    return Promise.resolve();
-  } else {
+  if (msg instanceof ReadableStream) {
     return msg.pipeTo(Deno.stdout.writable, {
       preventCancel: true,
       preventClose: true,
     });
+  } else {
+    console.log(msg);
+    return Promise.resolve();
   }
 };
 

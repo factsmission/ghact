@@ -91,17 +91,7 @@ export class GHActWorker {
       const job = jobStatus.job;
 
       const log: LogFn = (msg) => {
-        if (typeof msg === "string") {
-          Deno.writeTextFileSync(
-            path.join(jobStatus.dir, "log.txt"),
-            msg + "\n",
-            {
-              append: true,
-            },
-          );
-          console.log(msg);
-          return Promise.resolve();
-        } else {
+        if (msg instanceof ReadableStream) {
           const [toConsole, toFile] = msg.tee();
           return Promise.allSettled([
             toConsole.pipeTo(Deno.stdout.writable, {
@@ -115,6 +105,16 @@ export class GHActWorker {
               }).writable,
             ),
           ]).then(() => {});
+        } else {
+          Deno.writeTextFileSync(
+            path.join(jobStatus.dir, "log.txt"),
+            msg + "\n",
+            {
+              append: true,
+            },
+          );
+          console.log(msg);
+          return Promise.resolve();
         }
       };
 

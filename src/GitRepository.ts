@@ -77,7 +77,7 @@ export class GitRepository {
    * will reduce the amount of storage occupied by the repository.
    */
   async cloneRepo(log: LogFn = consoleLog, blobless = false) {
-    await log(
+    log(
       `== starting git clone for ${this.uri} ==\n== this may take some time ==`,
     );
     if (existsSync(this.directory)) {
@@ -106,9 +106,9 @@ export class GitRepository {
     const { success } = await child.status;
 
     if (success) {
-      await log("== git clone successful ==");
+      log("== git clone successful ==");
     } else {
-      await log("== git clone failed ==");
+      log("== git clone failed ==");
       throw new Error(
         `Cloning of ${this.uri} into ${this.directory} failed, see logs.`,
       );
@@ -121,7 +121,7 @@ export class GitRepository {
    * if it fails, it automatically calls `this.emptyDataDir()` and `this.cloneRepo(log)`.
    */
   async updateLocalData(log: LogFn = consoleLog) {
-    await log("== starting git pull ==");
+    log("== starting git pull ==");
 
     if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
       const command = new Deno.Command("/usr/bin/git", {
@@ -139,9 +139,9 @@ export class GitRepository {
       const { success } = await child.status;
 
       if (!success) {
-        await log("== git pull failed, will attempt to clone instead ==");
+        log("== git pull failed, will attempt to clone instead ==");
       } else {
-        await log("== git pull successful ==");
+        log("== git pull successful ==");
       }
       if (success) return;
     }
@@ -165,7 +165,7 @@ export class GitRepository {
     log: LogFn = consoleLog,
   ): Promise<ChangeSummary> {
     await this.updateLocalData(log);
-    await log("== git diff ==");
+    log("== git diff ==");
     const command = new Deno.Command("/usr/bin/git", {
       args: [
         "diff",
@@ -231,7 +231,7 @@ export class GitRepository {
    * Wrapper for `git push`
    */
   async push(log: LogFn = consoleLog) {
-    await log("== git push ==");
+    log("== git push ==");
     const command = new Deno.Command("/usr/bin/git", {
       args: [
         "push",
@@ -262,7 +262,7 @@ export class GitRepository {
    * ```
    */
   async commit(job: Job, message: string, log: LogFn = consoleLog) {
-    await log("== git commit ==");
+    log("== git commit ==");
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A

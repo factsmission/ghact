@@ -94,7 +94,7 @@ export class GHActWorker {
 
       try {
         this.queue.setStatus(job, "pending");
-        await log(`=== Starting job ${job.id} ===`);
+        log(`=== Starting job ${job.id} ===`);
         if ("type" in job && job.type === "full_update_gather") {
           await this.gatherJobsForFullUpdate(job, log);
           // gatherJobsForFullUpdate handles setting job status itself
@@ -102,14 +102,14 @@ export class GHActWorker {
           await this.gitRepository.updateLocalData(log);
           await this.jobHandler(job, log);
           this.queue.setStatus(job, "completed");
-          await log(`=== Sucessfully completed job ${job.id} ===`);
+          log(`=== Sucessfully completed job ${job.id} ===`);
           createBadge("OK", this.config.workDir, this.config.title);
         }
       } catch (error) {
         this.queue.setStatus(job, "failed");
-        await log(`=== Failed job ${job.id} ===\n=== Error: ===`);
-        await log(error);
-        if (error.stack) await log(error.stack);
+        log(`=== Failed job ${job.id} ===\n=== Error: ===`);
+        log(error);
+        if (error.stack) log(error.stack);
         createBadge("Failed", this.config.workDir, this.config.title);
       }
     }
@@ -149,7 +149,7 @@ export class GHActWorker {
             files = [];
           }
         } else {
-          await log(`skipped ${walkEntry.path}`);
+          log(`skipped ${walkEntry.path}`);
         }
       }
       if (files.length > 0) {
@@ -166,14 +166,14 @@ export class GHActWorker {
         j.id += ` of ${block.toString(10).padStart(3, "0")}`;
         this.queue.addJob(j);
       });
-      await log(`Created ${block} jobs for full update`);
-      await log(`=== Sucessfully completed job ${job.id} ===`);
+      log(`Created ${block} jobs for full update`);
+      log(`=== Sucessfully completed job ${job.id} ===`);
       this.queue.setStatus(job, "completed");
     } catch (error) {
       this.queue.setStatus(job, "failed");
-      await log(`=== Failed job ${job.id} ===\n=== Error: ===`);
-      await log(error);
-      if (error.stack) await log(error.stack);
+      log(`=== Failed job ${job.id} ===\n=== Error: ===`);
+      log(error);
+      if (error.stack) log(error.stack);
     } finally {
       this.isRunning = false;
       await this.startTask();

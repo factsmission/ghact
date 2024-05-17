@@ -85,15 +85,15 @@ const markCommandOutput = (
  * A function of this type is passed to the jobHandler and is used to log messages to the
  * respective logfiles. It will also log the messages to the console.
  *
- * If a string is passed, the promise is resolved instantly, and it may be
- * treated as a sync function returning void.
+ * If a string is passed, it is a sync function returning void.
  *
- * If a ReadableStream is passed (e.g. output from an external command) then the
- * promise only resolves after the write has finished. In this case you must
- * await the promise.
+ * If a ReadableStream is passed (e.g. output from an external command) then it
+ * returns a promise which only resolves after the write has finished. In this
+ * case you must await the promise.
  */
 export interface LogFn {
-  (message: string | ReadableStream<Uint8Array>): Promise<void>;
+  (message: string): void;
+  (message: ReadableStream<Uint8Array>): Promise<void>;
 }
 
 /**
@@ -115,7 +115,11 @@ export class LogFn implements LogFn {
    * @param stdout whether to (simultaneously) log messages to the console/stdout
    */
   constructor(file: string | false, stdout: boolean) {
-    return (message: string | ReadableStream<Uint8Array>): Promise<void> => {
+    function log(message: string): void;
+    function log(message: ReadableStream<Uint8Array>): Promise<void>;
+    function log(
+      message: string | ReadableStream<Uint8Array>,
+    ): void | Promise<void> {
       if (message instanceof ReadableStream) {
         const [forFile, forConsole] = message.tee();
         const toFile = file
@@ -135,8 +139,8 @@ export class LogFn implements LogFn {
           Deno.writeTextFileSync(file, message + "\n", { append: true });
         }
         if (stdout) console.log(message);
-        return Promise.resolve();
       }
-    };
+    }
+    return log;
   }
 }

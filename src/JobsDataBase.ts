@@ -3,10 +3,10 @@ import { path } from "./deps.ts";
 
 //const jobsDir = `${config.workDir}/log`;
 
-import { type Job } from "../mod.ts";
+import { type FullUpdateGatherJob, type Job } from "../mod.ts";
 
 export type JobStatus = {
-  job: Job;
+  job: Job | FullUpdateGatherJob;
   status: "pending" | "failed" | "completed";
   dir: string;
 };
@@ -22,7 +22,7 @@ export class JobsDataBase {
     Deno.mkdirSync(jobsDir, { recursive: true });
   }
 
-  addJob(job: Job) {
+  addJob(job: Job | FullUpdateGatherJob) {
     const status: JobStatus = {
       job,
       status: "pending",
@@ -35,7 +35,10 @@ export class JobsDataBase {
     );
   }
 
-  setStatus(job: Job, status: "failed" | "completed" | "pending") {
+  setStatus(
+    job: Job | FullUpdateGatherJob,
+    status: "failed" | "completed" | "pending",
+  ) {
     const jobStatus: JobStatus = {
       job,
       status,

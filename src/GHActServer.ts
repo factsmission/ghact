@@ -5,7 +5,12 @@ import {
   STATUS_CODE,
   STATUS_TEXT,
 } from "./deps.ts";
-import { type Config, type Job } from "../mod.ts";
+import {
+  type BasicJob,
+  type Config,
+  type FullUpdateGatherJob,
+  type WebhookJob,
+} from "../mod.ts";
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
 import { indexPage } from "./indexPage.ts";
@@ -22,6 +27,11 @@ type webhookPayload = {
     name: string;
     email: string;
   };
+  commits: {
+    added: string[];
+    removed: string[];
+    modified: string[];
+  }[];
 };
 
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
@@ -61,9 +71,11 @@ export class GHActServer {
         j.status === "completed" || j.status === "failed"
       )
         ?.status || "Unknown";
-    if (latest === "failed") createBadge("Failed", this.config.workDir, this.config.title);
-    else if (latest === "completed") createBadge("OK", this.config.workDir, this.config.title);
-    else createBadge("Unknown", this.config.workDir, this.config.title);
+    if (latest === "failed") {
+      createBadge("Failed", this.config.workDir, this.config.title);
+    } else if (latest === "completed") {
+      createBadge("OK", this.config.workDir, this.config.title);
+    } else createBadge("Unknown", this.config.workDir, this.config.title);
 
     if (
       !this.config.sourceRepositoryUri.includes(this.config.sourceRepository)
@@ -109,7 +121,7 @@ export class GHActServer {
         }
         const till = requestUrl.searchParams.get("till") || "HEAD";
         // console.log(await getModifiedAfter(from));
-        const job: Job = {
+        const job: BasicJob = {
           id: (new Date()).toISOString(),
           from,
           till,
@@ -130,7 +142,19 @@ export class GHActServer {
       }
       if (pathname === "/full_update") {
         console.log("· got full_update request");
-        this.worker.postMessage("FULLUPDATE");
+        const job: FullUpdateGatherJob = {
+          type: "full_update_gather",
+          id: (new Date()).toISOString() + " full update gathering",
+          author: {
+            name: this.config.title,
+            email: this.config.email,
+          },
+        };
+        this.db.addJob(job);
+        this.worker.postMessage(job);
+        console.log(
+          `Job submitted: ${JSON.stringify(job, undefined, 2)}`,
+        );
         return new Response(undefined, {
           status: STATUS_CODE.Accepted,
           statusText: STATUS_TEXT[STATUS_CODE.Accepted],
@@ -163,11 +187,18 @@ export class GHActServer {
               statusText: STATUS_TEXT[STATUS_CODE.BadRequest],
             });
           }
-          const job: Job = {
+          const job: WebhookJob = {
             id: (new Date()).toISOString(),
             from: json.before,
             till: json.after,
             author: json.pusher,
+            files: {
+              from: json.before,
+              till: json.after,
+              added: json.commits.flatMap((c) => c.added),
+              removed: json.commits.flatMap((c) => c.removed),
+              modified: json.commits.flatMap((c) => c.modified),
+            },
           };
           this.db.addJob(job);
           this.worker.postMessage(job);

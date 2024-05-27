@@ -95,7 +95,7 @@ export class GitRepository {
         `--branch=${this.branch}`,
         this.authUri,
         `.`,
-      ],
+      ].filter((v) => v !== ""),
       cwd: this.directory,
       stdin: "null",
       stderr: "piped",

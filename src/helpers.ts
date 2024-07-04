@@ -1,9 +1,10 @@
 const encoder = new TextEncoder();
 
 export async function verifySignature(req: Request, WEBHOOK_SECRET: string) {
-  const header = req.headers.get("x-hub-signature-256");
+  const header = req.headers.get("x-hub-signature-256") ||
+    req.headers.get("X-Forgejo-Signature");
   if (!header) {
-    throw new Error("No x-hub-signature-256");
+    throw new Error("No x-hub-signature-256 or X-Forgejo-Signature");
   }
   const payload = JSON.stringify(req.body);
   const parts = header.split("=");

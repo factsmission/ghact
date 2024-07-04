@@ -24,7 +24,8 @@ type webhookPayload = {
   before: string;
   after: string;
   pusher: {
-    name: string;
+    name?: string;
+    username?: string;
     email: string;
   };
   commits: {
@@ -191,7 +192,11 @@ export class GHActServer {
             id: (new Date()).toISOString(),
             from: json.before,
             till: json.after,
-            author: json.pusher,
+            author: {
+              name: json.pusher.name ?? json.pusher.username ??
+                this.config.title,
+              email: json.pusher.email,
+            },
             files: {
               from: json.before,
               till: json.after,

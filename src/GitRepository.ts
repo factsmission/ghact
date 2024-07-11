@@ -266,7 +266,10 @@ export class GitRepository {
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A
-                      git commit -m ${JSON.stringify(message)}`;
+                      git diff-index --quiet HEAD || git commit -m ${
+      JSON.stringify(message)
+    }`;
+    // `git diff-index --quiet HEAD` exits with 0 if no changes are staged, skipping the commit
     const command = new Deno.Command("bash", {
       args: [
         "-c",

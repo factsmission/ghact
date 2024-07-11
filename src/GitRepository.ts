@@ -183,7 +183,9 @@ export class GitRepository {
   }
 
   /**
-   * Get a list of all changed files between two commits, including the changes made in those commits.
+   * Get a list of all changed files between two commits, including the changes
+   * made in those commits. If fromCommit == tillCommit, will return the changes
+   * made in that single commit.
    *
    * It will figure out the full hashes of the commits and return them in the ChangeSummary (even if `tillCommit === "HEAD"`).
    *

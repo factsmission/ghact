@@ -1,9 +1,5 @@
 import { type JobsDataBase } from "./JobsDataBase.ts";
 
-const styles = `
-
-`;
-
 export function indexPage(
   title: string,
   description: string,

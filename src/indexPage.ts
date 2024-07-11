@@ -10,7 +10,7 @@ export function indexPage(
   jobsDB: JobsDataBase,
 ) {
   const jobsTable = jobsDB.allJobs().map((job) =>
-    `<tr class="${job.status}"><td>${job.job.id}</td><td>${job.status}</td><td><a href="${job.dir}/log.txt">${job.dir}/log.txt</a></td><td>\${job.job.from}</td><td>${job.job.till}</td></tr>`
+    `<tr class="${job.status}"><td>${job.job.id}</td><td>${job.status}</td><td><a href="${job.dir}/log.txt">${job.dir}/log.txt</a></td><td>${job.job.from}</td><td>${job.job.till}</td></tr>`
   );
   return (`
 <html>

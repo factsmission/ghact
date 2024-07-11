@@ -236,7 +236,7 @@ export class GHActServer {
         requestUrl.searchParams.get("till") || "200",
       );
       const json = JSON.stringify(
-        this.db.allJobs().slice(from, till),
+        this.db.allJobs(false, [from, till]),
         undefined,
         2,
       );

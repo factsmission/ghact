@@ -255,7 +255,7 @@ export class GHActServer {
     } else if (pathname === "/") {
       //fallback to directory serving
       const response = new Response(
-        indexPage(this.config.title, this.config.description),
+        indexPage(this.config.title, this.config.description, this.db),
         {
           headers: { "content-type": "text/html" },
         },

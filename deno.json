@@ -1,3 +1,9 @@
 {
-  "lock": "deno.lock"
+  "lock": "deno.lock",
+  "tasks": {
+    "test": "echo 'These tests are only very rudimentary and ignore the main Server'; rm -rf ./coverage; deno test --coverage --allow-write=./workdir/repo --allow-read=./workdir/repo --allow-run=git test/; deno coverage --html"
+  },
+  "lint": {
+    "exclude": ["workdir/"]
+  }
 }

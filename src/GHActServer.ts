@@ -200,9 +200,15 @@ export class GHActServer {
             files: {
               from: json.before,
               till: json.after,
-              added: json.commits.flatMap((c) => c.added),
-              removed: json.commits.flatMap((c) => c.removed),
-              modified: json.commits.flatMap((c) => c.modified),
+              added: json.commits
+                .flatMap((c) => c.added)
+                .map((f) => f.at(0) === "/" ? f.slice(1) : f),
+              removed: json.commits
+                .flatMap((c) => c.removed)
+                .map((f) => f.at(0) === "/" ? f.slice(1) : f),
+              modified: json.commits
+                .flatMap((c) => c.modified)
+                .map((f) => f.at(0) === "/" ? f.slice(1) : f),
             },
           };
           this.db.addJob(job);

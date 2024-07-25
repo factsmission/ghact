@@ -242,7 +242,7 @@ export class GHActServer {
         requestUrl.searchParams.get("till") || "200",
       );
       const json = JSON.stringify(
-        this.db.allJobs().slice(from, till),
+        this.db.allJobs(false, [from, till]),
         undefined,
         2,
       );
@@ -261,7 +261,7 @@ export class GHActServer {
     } else if (pathname === "/") {
       //fallback to directory serving
       const response = new Response(
-        indexPage(this.config.title, this.config.description),
+        indexPage(this.config.title, this.config.description, this.db),
         {
           headers: { "content-type": "text/html" },
         },

@@ -50,42 +50,51 @@ export class JobsDataBase {
     );
   }
 
-  allJobs(oldestFirst = false): JobStatus[] {
+  allJobs(oldestFirst = false, pagination?: [number, number]): JobStatus[] {
     const jobDirs = [];
     for (const jobDir of Deno.readDirSync(this.jobsDir)) {
       jobDirs.push(jobDir);
     }
-    return jobDirs.filter((entry) => entry.isDirectory).sort((a, b) =>
-      oldestFirst ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    ).map((jobDir) => {
-      const statusFile = path.join(this.jobsDir, jobDir.name, "status.json");
-      try {
-        return Deno.readTextFileSync(statusFile);
-      } catch (err) {
-        if (err instanceof Deno.errors.NotFound) {
-          console.warn(
-            `No statusfile found at ${statusFile}. Please remove directory.`,
-          );
-          return null;
-        } else if (
-          (err instanceof Deno.errors.NotADirectory) || err.code === "ENOTDIR"
-        ) {
-          console.warn(
-            `${statusFile} is not a diretory. Please remove the file.`,
-          );
-          return null;
-        } else {
-          throw err;
+    return jobDirs
+      .filter((entry) => entry.isDirectory)
+      .sort((a, b) =>
+        oldestFirst
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name)
+      )
+      .slice(pagination?.[0], pagination?.[1])
+      .map((jobDir) => {
+        const statusFile = path.join(this.jobsDir, jobDir.name, "status.json");
+        try {
+          return Deno.readTextFileSync(statusFile);
+        } catch (err) {
+          if (err instanceof Deno.errors.NotFound) {
+            console.warn(
+              `No statusfile found at ${statusFile}. Please remove directory.`,
+            );
+            return null;
+          } else if (
+            (err instanceof Deno.errors.NotADirectory) || err.code === "ENOTDIR"
+          ) {
+            console.warn(
+              `${statusFile} is not a diretory. Please remove the file.`,
+            );
+            return null;
+          } else {
+            throw err;
+          }
         }
-      }
-    }).filter(notEmpty).map((t) => {
-      try {
-        return JSON.parse(t) as JobStatus;
-      } catch (err) {
-        console.warn(`${err} parsing ${t}.`);
-        return null;
-      }
-    }).filter(notEmpty);
+      })
+      .filter(notEmpty)
+      .map((t) => {
+        try {
+          return JSON.parse(t) as JobStatus;
+        } catch (err) {
+          console.warn(`${err} parsing ${t}.`);
+          return null;
+        }
+      })
+      .filter(notEmpty);
   }
   pendingJobs() {
     return this.allJobs(true).filter((js) => js.status === "pending");

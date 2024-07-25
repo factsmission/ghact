@@ -133,7 +133,8 @@ export class GHActWorker {
       ) {
         if (walkEntry.isFile) {
           files.push(
-            walkEntry.path.replace(this.gitRepository.directory, ""),
+            // this.gitRepository.directory does not contain a trailing /, but we want our filenames not to begin with one
+            walkEntry.path.replace(this.gitRepository.directory + "/", ""),
           );
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({

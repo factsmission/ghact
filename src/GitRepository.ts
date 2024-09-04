@@ -151,9 +151,43 @@ export class GitRepository {
   }
 
   /**
-   * Get a list of all changed files between two commits
+   * Turns the ref string into an unambiguous representation: the hash of that commit object.
    *
-   * If `tillCommit === "HEAD"`, it will figure out the commit hash of till and return it in the ChangeSummary.
+   * Wrapper for `git rev-parse ${ref}`
+   */
+  async getFullHash(ref: string, log: LogFn = consoleLog): Promise<string> {
+    const command = new Deno.Command("/usr/bin/git", {
+      args: ["rev-parse", ref],
+      env: {
+        GIT_CEILING_DIRECTORIES: this.directory,
+      },
+      cwd: this.directory,
+      stdin: "null",
+      stderr: "piped",
+      stdout: "piped",
+    });
+    const child = command.spawn();
+    const [outA, outB] = child.stdout.tee();
+    await log(combineCommandOutputs(outA, child.stderr));
+    const { success } = await child.status;
+    if (success) {
+      let result = "";
+      for await (
+        const chunk of outB.pipeThrough(new TextDecoderStream()).values()
+      ) {
+        result += chunk;
+      }
+      return result.split("\n")[0];
+    }
+    throw new Error(`Could not rev-parse ${ref}, aborting`);
+  }
+
+  /**
+   * Get a list of all changed files between two commits, including the changes
+   * made in those commits. If fromCommit == tillCommit, will return the changes
+   * made in that single commit.
+   *
+   * It will figure out the full hashes of the commits and return them in the ChangeSummary (even if `tillCommit === "HEAD"`).
    *
    * @param fromCommit Commit hash
    * @param tillCommit Commit hash, defaults to "HEAD"
@@ -166,14 +200,24 @@ export class GitRepository {
   ): Promise<ChangeSummary> {
     await this.updateLocalData(log);
     log("== git diff ==");
+    const fromHash = await this.getFullHash(fromCommit);
+    const tillHash = await this.getFullHash(tillCommit);
+    log(
+      `== from: ${fromCommit} (${fromHash}), till: ${tillCommit} (${tillHash})`,
+    );
+    const args = [
+      "diff",
+      "--name-status",
+      "--no-renames", // handle renames as a deletion and an addition
+    ];
+    if (fromHash === tillHash) {
+      args.push(`${fromHash}^!`);
+    } else {
+      args.push(`${fromHash}^@`);
+      args.push(tillHash);
+    }
     const command = new Deno.Command("/usr/bin/git", {
-      args: [
-        "diff",
-        "--name-status",
-        "--no-renames", // handle renames as a deletion and an addition
-        fromCommit,
-        tillCommit,
-      ],
+      args,
       cwd: this.directory,
       stdin: "null",
       stderr: "piped",
@@ -185,21 +229,6 @@ export class GitRepository {
     const { success } = await child.status;
     if (!success) {
       throw new Error("git diff failed, see logs.");
-    }
-
-    if (tillCommit === "HEAD") {
-      const p = new Deno.Command("/usr/bin/git", {
-        args: [
-          "rev-parse",
-          "HEAD",
-        ],
-        cwd: this.directory,
-      });
-      const { success, stdout } = p.outputSync();
-      if (success) {
-        tillCommit = new TextDecoder().decode(stdout).trim();
-        log("HEAD is: " + tillCommit);
-      }
     }
 
     const typedFiles = (await Array.fromAsync(commandOutputToLines(stdout)))
@@ -222,8 +251,8 @@ export class GitRepository {
       added: typedFiles.filter((t) => t[0] === "A").map((t) => t[1]),
       modified: typedFiles.filter((t) => t[0] === "M").map((t) => t[1]),
       removed: typedFiles.filter((t) => t[0] === "D").map((t) => t[1]),
-      from: fromCommit,
-      till: tillCommit,
+      from: fromHash,
+      till: tillHash,
     });
   }
 
@@ -266,7 +295,10 @@ export class GitRepository {
     const commands = `git config --replace-all user.name ${job.author.name}
                       git config --replace-all user.email ${job.author.email}
                       git add -A
-                      git commit -m ${JSON.stringify(message)}`;
+                      git diff-index --quiet HEAD || git commit -m ${
+      JSON.stringify(message)
+    }`;
+    // `git diff-index --quiet HEAD` exits with 0 if no changes are staged, skipping the commit
     const command = new Deno.Command("bash", {
       args: [
         "-c",

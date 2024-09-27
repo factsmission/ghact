@@ -8,6 +8,7 @@ import { type FullUpdateGatherJob, type Job } from "../mod.ts";
 export type JobStatus = {
   job: Job | FullUpdateGatherJob;
   status: "pending" | "failed" | "completed";
+  message: string | undefined;
   dir: string;
 };
 
@@ -26,6 +27,7 @@ export class JobsDataBase {
     const status: JobStatus = {
       job,
       status: "pending",
+      message: undefined,
       dir: path.join(this.jobsDir, job.id),
     };
     Deno.mkdirSync(status.dir);
@@ -38,10 +40,12 @@ export class JobsDataBase {
   setStatus(
     job: Job | FullUpdateGatherJob,
     status: "failed" | "completed" | "pending",
+    message?: string,
   ) {
     const jobStatus: JobStatus = {
       job,
       status,
+      message,
       dir: path.join(this.jobsDir, job.id),
     };
     Deno.writeTextFileSync(

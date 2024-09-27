@@ -54,7 +54,7 @@ export class GHActWorker {
     private readonly jobHandler: (
       job: Job,
       log: LogFn,
-    ) => void | Promise<void>,
+    ) => void | Promise<void> | string | Promise<string>,
   ) {
     this.gitRepository = new GitRepository(
       config.sourceRepositoryUri,
@@ -100,13 +100,13 @@ export class GHActWorker {
           // gatherJobsForFullUpdate handles setting job status itself
         } else {
           await this.gitRepository.updateLocalData(log);
-          await this.jobHandler(job, log);
-          this.queue.setStatus(job, "completed");
+          const message = await this.jobHandler(job, log) as string | undefined;
+          this.queue.setStatus(job, "completed", message);
           log(`=== Sucessfully completed job ${job.id} ===`);
           createBadge("OK", this.config.workDir, this.config.title);
         }
       } catch (error) {
-        this.queue.setStatus(job, "failed");
+        this.queue.setStatus(job, "failed", "" + error);
         log(`=== Failed job ${job.id} ===\n=== Error: ===`);
         log(error);
         if (error.stack) log(error.stack);
@@ -171,7 +171,7 @@ export class GHActWorker {
       log(`=== Sucessfully completed job ${job.id} ===`);
       this.queue.setStatus(job, "completed");
     } catch (error) {
-      this.queue.setStatus(job, "failed");
+      this.queue.setStatus(job, "failed", "" + error);
       log(`=== Failed job ${job.id} ===\n=== Error: ===`);
       log(error);
       if (error.stack) log(error.stack);

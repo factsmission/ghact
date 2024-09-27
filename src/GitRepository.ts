@@ -125,7 +125,7 @@ export class GitRepository {
 
     if (existsSync(this.directory) && existsSync(`${this.directory}/.git`)) {
       const command = new Deno.Command("/usr/bin/git", {
-        args: ["pull"],
+        args: ["pull", "--no-stat"],
         env: {
           GIT_CEILING_DIRECTORIES: this.directory,
         },

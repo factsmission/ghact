@@ -39,6 +39,35 @@ const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
 const ADMIN_PASSWORD: string | undefined = Deno.env.get("ADMIN_PASSWORD");
 
 /**
+ * Reserved paths that cannot be overridden by custom handlers
+ * @internal
+ */
+const RESERVED_PATHS = [
+  "/",
+  "/status",
+  "/status/",
+  "/update",
+  "/full_update",
+  "/jobs.json",
+  "/actions",
+];
+
+/**
+ * Type for custom HTTP handler functions
+ */
+export type HttpHandler = (request: Request) => Response | Promise<Response>;
+
+/**
+ * Registration entry for a custom handler with method and path
+ * @internal
+ */
+interface HandlerRegistration {
+  path: string;
+  method: string;
+  handler: HttpHandler;
+}
+
+/**
  * uses the WEBHOOK_SECRET environment variable to verify the origin of webhooks.
  * uses the ADMIN_PASSWORD environment variable to authenticate requests to /update and /full_update endpoints (username: admin).
  *
@@ -49,6 +78,10 @@ const ADMIN_PASSWORD: string | undefined = Deno.env.get("ADMIN_PASSWORD");
  * // worker must be in separate file, use GHActWorker there
  * const worker = new Worker(import.meta.resolve("./action_worker.ts"), { type: "module" });
  * const server = new GHActServer(worker, config);
+ * // Optionally register custom handlers before serving
+ * server.addHandler("/webhook", "POST", async (req) => {
+ *   return new Response("OK");
+ * });
  * await server.serve();
  * ```
  */
@@ -57,6 +90,10 @@ export class GHActServer {
   private readonly server: Server;
   /** @internal */
   private readonly db: JobsDataBase;
+  /** @internal */
+  private readonly customHandlers: Map<string, HandlerRegistration> = new Map();
+  /** @internal */
+  private isServing = false;
 
   /**
    * Creates new GHActServer. Use the `.serve()` method to start listening.
@@ -94,6 +131,90 @@ export class GHActServer {
   }
 
   /**
+   * Register a custom HTTP handler for a specific path and method.
+   *
+   * The handler is called exactly as provided - no additional middleware is applied by the framework.
+   * Users should compose their own middleware chain before passing the handler.
+   *
+   * Reserved paths (/, /status, /update, /full_update, /jobs.json, /actions) cannot be overridden.
+   * Paths that start with the workDir are also reserved for internal use.
+   *
+   * This method must be called before `serve()`. Attempting to register handlers after the server
+   * has started will throw an error.
+   *
+   * @param path - The path to register (e.g., "/webhook", "/health"). Must be non-empty and normalized.
+   * @param method - The HTTP method (e.g., "GET", "POST"). Case-insensitive.
+   * @param handler - The handler function that will be called for matching requests.
+   * @throws {Error} If the path is reserved, already registered, invalid, or if called after serve().
+   *
+   * @example
+   * ```ts
+   * const server = new GHActServer(worker, config);
+   *
+   * // Register a simple health check endpoint
+   * server.addHandler("/health", "GET", () => new Response("OK"));
+   *
+   * // Register with custom middleware
+   * const authMiddleware = (handler: HttpHandler) => (req: Request) => {
+   *   // Check auth...
+   *   return handler(req);
+   * };
+   * server.addHandler("/webhook", "POST", authMiddleware(myHandler));
+   *
+   * await server.serve();
+   * ```
+   */
+  addHandler(path: string, method: string, handler: HttpHandler): void {
+    if (this.isServing) {
+      throw new Error(
+        "Cannot register handlers after server has started. Call addHandler() before serve().",
+      );
+    }
+
+    // Validate path
+    if (!path || typeof path !== "string") {
+      throw new Error("Path must be a non-empty string");
+    }
+
+    if (!path.startsWith("/")) {
+      throw new Error("Path must start with '/'");
+    }
+
+    // Normalize method to uppercase
+    const normalizedMethod = method.toUpperCase();
+
+    // Check for reserved paths
+    if (RESERVED_PATHS.includes(path)) {
+      throw new Error(
+        `Path '${path}' is reserved and cannot be overridden. Reserved paths: ${
+          RESERVED_PATHS.join(", ")
+        }`,
+      );
+    }
+
+    // Check if path starts with workDir (reserved for internal file serving)
+    if (path.startsWith(this.config.workDir)) {
+      throw new Error(
+        `Paths starting with '${this.config.workDir}' are reserved for internal file serving`,
+      );
+    }
+
+    // Check for duplicate registration
+    const key = `${normalizedMethod}:${path}`;
+    if (this.customHandlers.has(key)) {
+      throw new Error(
+        `Handler already registered for ${normalizedMethod} ${path}`,
+      );
+    }
+
+    this.customHandlers.set(key, {
+      path,
+      method: normalizedMethod,
+      handler,
+    });
+  }
+
+  /**
    * Start listenig for requests (webhooks and for the logs interface)
    *
    * e.g. `await server.serve();`
@@ -102,6 +223,7 @@ export class GHActServer {
   serve(
     listener = Deno.listen({ port: 4505, hostname: "0.0.0.0" }),
   ): Promise<void> {
+    this.isServing = true;
     return this.server.serve(listener);
   }
 
@@ -113,6 +235,14 @@ export class GHActServer {
   private readonly webhookHandler = async (request: Request) => {
     const requestUrl = new URL(request.url);
     const pathname = requestUrl.pathname;
+
+    // Check custom handlers first
+    const handlerKey = `${request.method}:${pathname}`;
+    const customHandler = this.customHandlers.get(handlerKey);
+    if (customHandler) {
+      return await customHandler.handler(request);
+    }
+
     if (request.method === "POST") {
       if (pathname === "/update") {
         // Check authentication
@@ -125,7 +255,7 @@ export class GHActServer {
             },
           });
         }
-        
+
         const from = requestUrl.searchParams.get("from");
         if (!from) {
           return new Response("Query parameter 'from' required", {
@@ -165,7 +295,7 @@ export class GHActServer {
             },
           });
         }
-        
+
         console.log("· got full_update request");
         const job: FullUpdateGatherJob = {
           type: "full_update_gather",

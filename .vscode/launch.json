@@ -24,24 +24,20 @@
     },
     {
       "request": "launch",
-      "name": "Single transformation",
+      "name": "Custom Handlers Example",
       "type": "node",
-      "program": "${workspaceFolder}/src/gg2rdf.ts",
+      "program": "${workspaceFolder}/example/custom_handlers_example.ts",
       "cwd": "${workspaceFolder}",
-      "args": [
-        "-i",
-        "example-data/000040332F2853C295734E7BD4190F05.xml",
-        "-o",
-        "/tmp/000040332F2853C295734E7BD4190F05.ttl"
-      ],
       "runtimeExecutable": "/usr/bin/deno",
       "runtimeArgs": [
         "run",
-        "--inspect-brk",
+        "--inspect",
         "--allow-all"
       ],
       "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "ADMIN_PASSWORD": "your-secret-password"
+      },
       "attachSimplePort": 9229
     }
-  ]
 }

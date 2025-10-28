@@ -1,4 +1,4 @@
-export { GHActServer } from "./src/GHActServer.ts";
+export { GHActServer, type HttpHandler } from "./src/GHActServer.ts";
 export { GHActWorker } from "./src/GHActWorker.ts";
 export { GitRepository } from "./src/GitRepository.ts";
 export { combineCommandOutputs, LogFn } from "./src/log.ts";

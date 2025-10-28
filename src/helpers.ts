@@ -48,3 +48,20 @@ function hexToBytes(hex: string) {
 
   return bytes;
 }
+
+export function verifyBasicAuth(req: Request, expectedPassword: string): boolean {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    return false;
+  }
+
+  const base64Credentials = authHeader.slice(6);
+  try {
+    const credentials = atob(base64Credentials);
+    const [username, password] = credentials.split(":");
+    
+    return username === "admin" && password === expectedPassword;
+  } catch {
+    return false;
+  }
+}

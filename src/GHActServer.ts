@@ -14,7 +14,7 @@ import {
 import { createBadge } from "./log.ts";
 import { JobsDataBase } from "./JobsDataBase.ts";
 import { indexPage } from "./indexPage.ts";
-import { verifySignature } from "./helpers.ts";
+import { verifyBasicAuth, verifySignature } from "./helpers.ts";
 
 // Incomplete, only what we need
 type webhookPayload = {
@@ -36,9 +36,11 @@ type webhookPayload = {
 };
 
 const WEBHOOK_SECRET: string | undefined = Deno.env.get("WEBHOOK_SECRET");
+const ADMIN_PASSWORD: string | undefined = Deno.env.get("ADMIN_PASSWORD");
 
 /**
  * uses the WEBHOOK_SECRET environment variable to verify the origin of webhooks.
+ * uses the ADMIN_PASSWORD environment variable to authenticate requests to /update and /full_update endpoints (username: admin).
  *
  * example usage:
  * ```ts
@@ -113,6 +115,17 @@ export class GHActServer {
     const pathname = requestUrl.pathname;
     if (request.method === "POST") {
       if (pathname === "/update") {
+        // Check authentication
+        if (ADMIN_PASSWORD && !verifyBasicAuth(request, ADMIN_PASSWORD)) {
+          return new Response("Unauthorized", {
+            status: STATUS_CODE.Unauthorized,
+            statusText: STATUS_TEXT[STATUS_CODE.Unauthorized],
+            headers: {
+              "WWW-Authenticate": 'Basic realm="GHAct Admin", charset="UTF-8"',
+            },
+          });
+        }
+        
         const from = requestUrl.searchParams.get("from");
         if (!from) {
           return new Response("Query parameter 'from' required", {
@@ -142,6 +155,17 @@ export class GHActServer {
         });
       }
       if (pathname === "/full_update") {
+        // Check authentication
+        if (ADMIN_PASSWORD && !verifyBasicAuth(request, ADMIN_PASSWORD)) {
+          return new Response("Unauthorized", {
+            status: STATUS_CODE.Unauthorized,
+            statusText: STATUS_TEXT[STATUS_CODE.Unauthorized],
+            headers: {
+              "WWW-Authenticate": 'Basic realm="GHAct Admin", charset="UTF-8"',
+            },
+          });
+        }
+        
         console.log("· got full_update request");
         const job: FullUpdateGatherJob = {
           type: "full_update_gather",

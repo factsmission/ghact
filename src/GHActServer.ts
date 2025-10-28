@@ -116,7 +116,7 @@ export class GHActServer {
     if (request.method === "POST") {
       if (pathname === "/update") {
         // Check authentication
-        if (!ADMIN_PASSWORD || !verifyBasicAuth(request, ADMIN_PASSWORD)) {
+        if (ADMIN_PASSWORD && !verifyBasicAuth(request, ADMIN_PASSWORD)) {
           return new Response("Unauthorized", {
             status: STATUS_CODE.Unauthorized,
             statusText: STATUS_TEXT[STATUS_CODE.Unauthorized],
@@ -156,7 +156,7 @@ export class GHActServer {
       }
       if (pathname === "/full_update") {
         // Check authentication
-        if (!ADMIN_PASSWORD || !verifyBasicAuth(request, ADMIN_PASSWORD)) {
+        if (ADMIN_PASSWORD && !verifyBasicAuth(request, ADMIN_PASSWORD)) {
           return new Response("Unauthorized", {
             status: STATUS_CODE.Unauthorized,
             statusText: STATUS_TEXT[STATUS_CODE.Unauthorized],

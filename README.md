@@ -28,6 +28,11 @@ The `/update` and `/full_update` endpoints require HTTP Basic Authentication to
 prevent unauthorized access. Configure the password using the `ADMIN_PASSWORD`
 environment variable. The username is fixed as `admin`.
 
+> Caution: If `ADMIN_PASSWORD` is not set, these endpoints are accessible without
+> authentication. Anyone who can reach the server (including on a local network)
+> can trigger updates. For production use, set `ADMIN_PASSWORD` or restrict
+> access to the server (firewall, reverse proxy, or network controls).
+
 ### Example using curl:
 
 ```bash

@@ -40,6 +40,7 @@ const ADMIN_PASSWORD: string | undefined = Deno.env.get("ADMIN_PASSWORD");
 
 /**
  * uses the WEBHOOK_SECRET environment variable to verify the origin of webhooks.
+ * uses the ADMIN_PASSWORD environment variable to authenticate requests to /update and /full_update endpoints (username: admin).
  *
  * example usage:
  * ```ts

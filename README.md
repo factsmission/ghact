@@ -16,9 +16,24 @@ The server also exposes the follwing paths:
 - `/workdir/jobs/[id]/log.txt`: Log of run with that id
 - `/update?from=[from-commit-id]&till=[till-commit-id]`: send a `POST` here to
   update all files modified since from-commit-id up till-commit-id or HEAD if
-  not specified
+  not specified. **Requires HTTP Basic Authentication** (username: `admin`,
+  password from `ADMIN_PASSWORD` environment variable).
 - `/full_update`: send a `POST` here to run the full_update script. Note that
-  this will not delete any files (yet).
+  this will not delete any files (yet). **Requires HTTP Basic Authentication**
+  (username: `admin`, password from `ADMIN_PASSWORD` environment variable).
+
+## Authentication
+
+The `/update` and `/full_update` endpoints require HTTP Basic Authentication to
+prevent unauthorized access. Configure the password using the `ADMIN_PASSWORD`
+environment variable. The username is fixed as `admin`.
+
+Example using curl:
+
+```bash
+curl -u admin:your-secret-password -X POST \
+  "http://localhost:4505/update?from=HEAD~1&till=HEAD"
+```
 
 ## Usage / Documentation
 

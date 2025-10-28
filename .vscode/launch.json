@@ -17,6 +17,9 @@
         "--allow-all"
       ],
       "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "ADMIN_PASSWORD": "your-secret-password"
+      },
       "attachSimplePort": 9229
     },
     {

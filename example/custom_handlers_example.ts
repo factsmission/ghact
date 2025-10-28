@@ -65,7 +65,11 @@ server.addHandler("/api/resource", "GET", () => {
 server.addHandler("/api/resource", "POST", async (req) => {
   const body = await req.json();
   return new Response(
-    JSON.stringify({ message: "Resource created", id: crypto.randomUUID() }),
+    JSON.stringify({
+      message: "Resource created",
+      id: crypto.randomUUID(),
+      data: body,
+    }),
     {
       status: 201,
       headers: { "Content-Type": "application/json" },

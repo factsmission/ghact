@@ -1,7 +1,7 @@
-
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>Actions - GHAct</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -206,18 +206,18 @@
           
           if (response.ok) {
             resultDiv.className = 'result success';
-            resultDiv.textContent = `✓ Update job submitted successfully (${response.status} ${response.statusText})`;
+            resultDiv.textContent = `\u2713 Update job submitted successfully (${response.status} ${response.statusText})`;
           } else if (response.status === 401) {
             resultDiv.className = 'result error';
-            resultDiv.textContent = `✗ Authentication failed. Check your username and password.`;
+            resultDiv.textContent = `\u2717 Authentication failed. Check your username and password.`;
           } else {
             const errorText = await response.text();
             resultDiv.className = 'result error';
-            resultDiv.textContent = `✗ Error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`;
+            resultDiv.textContent = `\u2717 Error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`;
           }
         } catch (error) {
           resultDiv.className = 'result error';
-          resultDiv.textContent = `✗ Error: ${error.message}`;
+          resultDiv.textContent = `\u2717 Error: ${error.message}`;
         } finally {
           submitButton.disabled = false;
         }
@@ -250,18 +250,18 @@
           
           if (response.ok) {
             resultDiv.className = 'result success';
-            resultDiv.textContent = `✓ Full update job submitted successfully (${response.status} ${response.statusText})`;
+            resultDiv.textContent = `\u2713 Full update job submitted successfully (${response.status} ${response.statusText})`;
           } else if (response.status === 401) {
             resultDiv.className = 'result error';
-            resultDiv.textContent = `✗ Authentication failed. Check your username and password.`;
+            resultDiv.textContent = `\u2717 Authentication failed. Check your username and password.`;
           } else {
             const errorText = await response.text();
             resultDiv.className = 'result error';
-            resultDiv.textContent = `✗ Error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`;
+            resultDiv.textContent = `\u2717 Error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`;
           }
         } catch (error) {
           resultDiv.className = 'result error';
-          resultDiv.textContent = `✗ Error: ${error.message}`;
+          resultDiv.textContent = `\u2717 Error: ${error.message}`;
         } finally {
           submitButton.disabled = false;
         }

@@ -28,11 +28,17 @@ The `/update` and `/full_update` endpoints require HTTP Basic Authentication to
 prevent unauthorized access. Configure the password using the `ADMIN_PASSWORD`
 environment variable. The username is fixed as `admin`.
 
-Example using curl:
+### Example using curl:
 
 ```bash
 curl -u admin:your-secret-password -X POST \
   "http://localhost:4505/update?from=HEAD~1&till=HEAD"
+```
+
+### Example using fetch:
+```ts
+const res = await fetch("http://localhost:4505/update?from=HEAD~1&till=HEAD", { method: "POST", headers: { "Authorization": "Basic " + btoa("admin:your-secret-password") } });
+console.log(res.status, await res.text());
 ```
 
 ## Usage / Documentation

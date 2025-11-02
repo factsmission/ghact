@@ -127,6 +127,13 @@ export class GHActServer {
 
     if (!this.worker) throw new Error("Missing worker");
 
+    this.worker.postMessage({ type: "init", config: this.config });
+    this.worker.onmessage = (e: MessageEvent) => {
+      if (e.data.type === "status") {
+        this.db.setStatus(e.data.jobId, e.data.status, e.data.message);
+      }
+    };
+
     this.server = new Server({ handler: this.webhookHandler });
   }
 

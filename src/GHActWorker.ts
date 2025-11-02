@@ -25,22 +25,23 @@ if (!GHTOKEN) console.warn("GHTOKEN is missing!");
  * example usage:
  * ```ts
  * /// <reference lib="webworker" />
- * import { GHActWorker, type Config, type Job } from ".";
- * const config: Config = { ... };
- * new GHActWorker(self, config, (job: Job, log) => {
+ * import { GHActWorker, type Job } from ".";
+ * new GHActWorker(self, (job: Job, log) => {
  *   log(`Proudly executing ${JSON.stringify(job, undefined, 2)}`);
  * });
  * ```
  */
 export class GHActWorker {
   /** @internal */
-  private readonly queue: JobsDataBase;
+  private queue?: JobsDataBase;
+  /** @internal */
+  private config?: Config;
   /** @internal */
   private isRunning = false;
   /**
    * The source-repository
    */
-  readonly gitRepository: GitRepository;
+  gitRepository?: GitRepository;
 
   /**
    * Note that the before execution of the jobHandler callback function,
@@ -50,21 +51,33 @@ export class GHActWorker {
    */
   constructor(
     scope: (Window | WorkerGlobalScope) & typeof globalThis,
-    private readonly config: Config,
     private readonly jobHandler: (
       job: Job,
       log: LogFn,
     ) => void | Promise<void> | string | Promise<string>,
   ) {
-    this.gitRepository = new GitRepository(
-      config.sourceRepositoryUri,
-      config.sourceBranch,
-      GHTOKEN,
-      `${config.workDir}/repository`,
-    );
-    this.queue = new JobsDataBase(`${config.workDir}/jobs`);
-    scope.onmessage = async () => {
-      // Jobs are queued by frontend already
+    scope.onmessage = async (e: MessageEvent) => {
+      if (e.data.type === "init") {
+        this.config = e.data.config;
+        this.gitRepository = new GitRepository(
+          this.config!.sourceRepositoryUri,
+          this.config!.sourceBranch,
+          GHTOKEN,
+          `${this.config!.workDir}/repository`,
+        );
+        this.queue = new JobsDataBase(`${this.config!.workDir}/jobs`);
+        console.log("Worker initialized with config:", this.config);
+        // Automatically start processing any pending jobs on initialization
+        if (!this.isRunning) await this.startTask();
+        return;
+      }
+
+      if (!this.config || !this.queue || !this.gitRepository) {
+        console.error("Worker not initialized. Ignoring message:", e.data);
+        return;
+      }
+
+      // Jobs are queued by the server, this message is just a trigger
       if (!this.isRunning) await this.startTask();
       else console.log("Already running");
     };
@@ -74,6 +87,10 @@ export class GHActWorker {
   private async startTask() {
     if (this.isRunning) {
       console.warn("Already running");
+      return;
+    }
+    if (!this.config || !this.queue) {
+      console.error("Cannot start task: worker not initialized.");
       return;
     }
     this.isRunning = true;
@@ -86,31 +103,31 @@ export class GHActWorker {
 
   /** @internal */
   private async run() {
-    while (this.queue.pendingJobs().length > 0) {
-      const jobStatus = this.queue.pendingJobs()[0];
+    while (this.queue!.pendingJobs().length > 0) {
+      const jobStatus = this.queue!.pendingJobs()[0];
       const job = jobStatus.job;
 
       const log = new LogFn(path.join(jobStatus.dir, "log.txt"), true);
 
       try {
-        this.queue.setStatus(job, "pending");
+        this.queue!.setStatus(job, "pending");
         log(`=== Starting job ${job.id} ===`);
         if ("type" in job && job.type === "full_update_gather") {
           await this.gatherJobsForFullUpdate(job, log);
           // gatherJobsForFullUpdate handles setting job status itself
         } else {
-          await this.gitRepository.updateLocalData(log);
+          await this.gitRepository!.updateLocalData(log);
           const message = await this.jobHandler(job, log) as string | undefined;
-          this.queue.setStatus(job, "completed", message);
+          this.queue!.setStatus(job, "completed", message);
           log(`=== Sucessfully completed job ${job.id} ===`);
-          createBadge("OK", this.config.workDir, this.config.title);
+          createBadge("OK", this.config!.workDir, this.config!.title);
         }
       } catch (error) {
-        this.queue.setStatus(job, "failed", "" + error);
+        this.queue!.setStatus(job, "failed", "" + error);
         log(`=== Failed job ${job.id} ===\n=== Error: ===`);
         log(error);
         if (error.stack) log(error.stack);
-        createBadge("Failed", this.config.workDir, this.config.title);
+        createBadge("Failed", this.config!.workDir, this.config!.title);
       }
     }
   }
@@ -119,13 +136,13 @@ export class GHActWorker {
   private async gatherJobsForFullUpdate(job: FullUpdateGatherJob, log: LogFn) {
     this.isRunning = true;
     try {
-      await this.gitRepository.updateLocalData();
+      await this.gitRepository!.updateLocalData();
       const date = job.id.split(" ")[0];
       let block = 0;
       const jobs: FullUpdateJob[] = [];
       let files: string[] = [];
       for await (
-        const walkEntry of walk(this.gitRepository.directory, {
+        const walkEntry of walk(this.gitRepository!.directory, {
           exts: undefined,
           includeDirs: false,
           includeSymlinks: false,
@@ -134,13 +151,13 @@ export class GHActWorker {
         if (walkEntry.isFile) {
           files.push(
             // this.gitRepository.directory does not contain a trailing /, but we want our filenames not to begin with one
-            walkEntry.path.replace(this.gitRepository.directory + "/", ""),
+            walkEntry.path.replace(this.gitRepository!.directory + "/", ""),
           );
           if (files.length >= 3000) { // github does not generate diffs if more than 3000 files have been changed
             jobs.push({
               author: {
-                name: this.config.title,
-                email: this.config.email,
+                name: this.config!.title,
+                email: this.config!.email,
               },
               id: `${date} full update: ${
                 (++block).toString(10).padStart(3, "0")
@@ -156,8 +173,8 @@ export class GHActWorker {
       if (files.length > 0) {
         jobs.push({
           author: {
-            name: this.config.title,
-            email: this.config.email,
+            name: this.config!.title,
+            email: this.config!.email,
           },
           id: `${date} full update: ${(++block).toString(10).padStart(3, "0")}`, // note that the id must begin with a datestamp for correct ordering
           files: { modified: files },
@@ -165,13 +182,13 @@ export class GHActWorker {
       }
       jobs.forEach((j) => {
         j.id += ` of ${block.toString(10).padStart(3, "0")}`;
-        this.queue.addJob(j);
+        this.queue!.addJob(j);
       });
       log(`Created ${block} jobs for full update`);
       log(`=== Sucessfully completed job ${job.id} ===`);
-      this.queue.setStatus(job, "completed");
+      this.queue!.setStatus(job, "completed");
     } catch (error) {
-      this.queue.setStatus(job, "failed", "" + error);
+      this.queue!.setStatus(job, "failed", "" + error);
       log(`=== Failed job ${job.id} ===\n=== Error: ===`);
       log(error);
       if (error.stack) log(error.stack);

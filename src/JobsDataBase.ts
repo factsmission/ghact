@@ -1,8 +1,4 @@
 import { path } from "./deps.ts";
-//import { config } from "../config/config.ts";
-
-//const jobsDir = `${config.workDir}/log`;
-
 import { type FullUpdateGatherJob, type Job } from "../mod.ts";
 
 export type JobStatus = {

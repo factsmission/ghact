@@ -1,4 +1,4 @@
-FROM denoland/deno:ubuntu-1.42.4
+FROM denoland/deno:ubuntu-2.5.6
 
 RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y git

@@ -125,8 +125,9 @@ export class GHActWorker {
       } catch (error) {
         this.queue!.setStatus(job, "failed", "" + error);
         log(`=== Failed job ${job.id} ===\n=== Error: ===`);
-        log(error);
-        if (error.stack) log(error.stack);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        log(errorMessage);
+        if (error instanceof Error && error.stack) log(error.stack);
         createBadge("Failed", this.config!.workDir, this.config!.title);
       }
     }
@@ -190,8 +191,9 @@ export class GHActWorker {
     } catch (error) {
       this.queue!.setStatus(job, "failed", "" + error);
       log(`=== Failed job ${job.id} ===\n=== Error: ===`);
-      log(error);
-      if (error.stack) log(error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log(errorMessage);
+      if (error instanceof Error && error.stack) log(error.stack);
     } finally {
       this.isRunning = false;
       await this.startTask();

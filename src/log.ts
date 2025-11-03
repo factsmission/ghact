@@ -60,7 +60,7 @@ export const commandOutputToLines = (
   stream: ReadableStream<Uint8Array>,
 ): ReadableStream<string> => {
   return stream
-    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(new TextDecoderStream() as ReadableWritablePair<string, Uint8Array>)
     .pipeThrough(new TextLineStream())
     .pipeThrough(toTransformStream(async function* (src) {
       for await (const chunk of src) {

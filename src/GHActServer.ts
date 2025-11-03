@@ -382,7 +382,7 @@ export class GHActServer {
             statusText: STATUS_TEXT[STATUS_CODE.Accepted],
           });
         } catch (error) {
-          return new Response(error, {
+          return new Response(String(error), {
             status: STATUS_CODE.InternalServerError,
             statusText: STATUS_TEXT[STATUS_CODE.InternalServerError],
           });

@@ -74,7 +74,7 @@ export class JobsDataBase {
             );
             return null;
           } else if (
-            (err instanceof Deno.errors.NotADirectory) || err.code === "ENOTDIR"
+            (err instanceof Deno.errors.NotADirectory) || (typeof err === "object" && err !== null && "code" in err && (err as Record<string, unknown>).code === "ENOTDIR")
           ) {
             console.warn(
               `${statusFile} is not a diretory. Please remove the file.`,

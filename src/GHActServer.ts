@@ -418,7 +418,11 @@ export class GHActServer {
       });
       return response;
     } else if (pathname === "/actions") {
-      return await fetch(import.meta.resolve("./actions.html"));
+      const fetchResponse = await fetch(import.meta.resolve("./actions.html"));
+      return new Response(fetchResponse.body, {
+        status: fetchResponse.status,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
     } else if (pathname === "/") {
       //fallback to directory serving
       const response = new Response(
